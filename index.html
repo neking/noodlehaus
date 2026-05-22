@@ -1061,7 +1061,7 @@ let cart = {};
 /* ─────────────────────────────────────────────
    FORMAT HELPERS
 ───────────────────────────────────────────── */
-const fmt = n => "$" + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:2});
 
 function formatCard(el) {
   el.value = el.value.replace(/\D/g,'').replace(/(.{4})/g,'$1 ').trim().slice(0,19);

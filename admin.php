@@ -27,6 +27,44 @@ function db(): PDO {
     return $pdo;
 }
 
+function parseCsvLine(string $line): array
+{
+    // Strip trailing \r (Windows line endings)
+    $line   = rtrim($line, "\r\n");
+    $result = [];
+    $len    = mb_strlen($line,'UTF-8');
+    $i      = 0;
+    $field  = '';
+
+    while ($i < $len) {
+        $ch = mb_substr($line,$i,1,'UTF-8');
+        if ($ch === '"') {
+            $i++;
+            while ($i < $len) {
+                $c2 = mb_substr($line,$i,1,'UTF-8');
+                if ($c2 === '"' && mb_substr($line,$i+1,1,'UTF-8') === '"') {
+                    $field .= '"'; $i += 2;          // escaped ""
+                } elseif ($c2 === '"') {
+                    $i++; break;                     // closing quote
+                } else {
+                    $field .= $c2; $i++;
+                }
+            }
+        } elseif ($ch === ',') {
+            $result[] = $field;                      // save field as-is (no trim — preserves Unicode)
+            $field    = '';
+            $i++;
+        } else {
+            $field .= $ch;
+            $i++;
+        }
+    }
+    $result[] = $field;
+
+    // Trim only leading/trailing ASCII whitespace from each field (not Unicode chars)
+    return array_map(fn($f) => trim($f, " \t\r\n\0\x0B"), $result);
+}
+
 function sanitize(mixed $v): string {
     return htmlspecialchars(strip_tags(trim((string)($v??''))), ENT_QUOTES, 'UTF-8');
 }
@@ -234,16 +272,20 @@ if (isset($_GET['api'])) { // GET+POST both handled
         if (!in_array($ext, ['csv','txt'])) {
             echo json_encode(['ok'=>false,'msg'=>'CSV file သာ upload လုပ်ပါ (.csv)']); exit;
         }
-        $content = file_get_contents($file['tmp_name']);
-        // BOM ဖယ်
-        $content = ltrim($content, "ï»¿");
-        $lines   = preg_split('/
-|
-|
-/', trim($content));
+        $raw = file_get_contents($file['tmp_name']);
+        // BOM (UTF-8/UTF-16) ဖယ်
+        if (substr($raw,0,3) === "\xEF\xBB\xBF") $raw = substr($raw,3);
+        if (substr($raw,0,2) === "\xFF\xFE")     $raw = substr($raw,2);
+        if (substr($raw,0,2) === "\xFE\xFF")     $raw = substr($raw,2);
+        // Windows encoding → UTF-8
+        if (!mb_check_encoding($raw,'UTF-8')) {
+            $raw = mb_convert_encoding($raw,'UTF-8','auto');
+        }
+        $content = $raw;
+        $lines   = preg_split('/\r\n|\r|\n/', trim($content));
         if (count($lines) < 2) { echo json_encode(['ok'=>false,'msg'=>'Data မပါပါ']); exit; }
 
-        $header = str_getcsv(array_shift($lines));
+        $header = parseCsvLine(array_shift($lines));
         $header = array_map(fn($h) => strtolower(trim($h)), $header);
         $required = ['name','category','price'];
         foreach ($required as $r) {
@@ -257,24 +299,48 @@ if (isset($_GET['api'])) { // GET+POST both handled
 
         foreach ($lines as $lineNum => $line) {
             if (!trim($line)) continue;
-            $row = str_getcsv($line);
+            $row = parseCsvLine($line);
             if (count($row) < count($header)) {
                 $errors[] = ['row'=>$lineNum+2, 'msg'=>'Column count မကိုက်'];
                 continue;
             }
+            if (count($row) !== count($header)) {
+                // Pad or trim to match header count
+                while (count($row) < count($header)) $row[] = '';
+                $row = array_slice($row, 0, count($header));
+            }
             $data = array_combine($header, $row);
-            $name  = trim($data['name'] ?? '');
-            $cat   = trim($data['category'] ?? '');
-            $price = (int)preg_replace('/[^0-9]/','',$data['price'] ?? '0');
+            $name  = $data['name'] ?? '';
+            $cat   = $data['category'] ?? '';
+            $price = (int)preg_replace('/[^0-9.]/','',$data['price'] ?? '0');
+            if (str_contains((string)($data['price']??''), '.')) {
+                // dollar.cents format (e.g. 4.50) → multiply by 100 if needed
+                // Keep as-is since DB stores display value
+                $price = (int)round((float)preg_replace('/[^0-9.]/','',$data['price']??'0'));
+            }
             $stock = (int)($data['stock'] ?? $data['stock_qty'] ?? 0);
-            $emoji = trim($data['emoji'] ?? '🍽️') ?: '🍽️';
-            $desc  = trim($data['description'] ?? $data['desc'] ?? '');
+            $emoji = ($data['emoji'] ?? '') ?: '🍽️';
+            $desc  = $data['description'] ?? $data['desc'] ?? '';
 
             if (!$name)  { $errors[] = ['row'=>$lineNum+2,'msg'=>'Name ဗလာ']; continue; }
             if ($price<0){ $errors[] = ['row'=>$lineNum+2,'msg'=>'Price မမှန်']; continue; }
-            if (!in_array($cat, $validCats)) {
-                $cat = 'Noodles'; // default
+            // Case-insensitive category match
+            $catMatch = '';
+            foreach ($validCats as $vc) {
+                if (mb_strtolower($cat,'UTF-8') === mb_strtolower($vc,'UTF-8')) {
+                    $catMatch = $vc; break;
+                }
             }
+            if (!$catMatch) {
+                // ပထမစာလုံး ကြည့်ပြီး ရှာ
+                foreach ($validCats as $vc) {
+                    if (mb_stripos($vc, $cat, 0, 'UTF-8') !== false ||
+                        mb_stripos($cat, $vc, 0, 'UTF-8') !== false) {
+                        $catMatch = $vc; break;
+                    }
+                }
+            }
+            $cat = $catMatch ?: 'Noodles';
             $rows[] = compact('name','cat','price','stock','emoji','desc');
         }
 
@@ -284,7 +350,7 @@ if (isset($_GET['api'])) { // GET+POST both handled
 
         // Preview mode (no DB write)
         if (!empty($_POST['preview'])) {
-            echo json_encode(['ok'=>true,'preview'=>true,'rows'=>$rows,'errors'=>$errors]);
+            echo json_encode(['ok'=>true,'preview'=>true,'rows'=>$rows,'errors'=>$errors], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -312,7 +378,7 @@ if (isset($_GET['api'])) { // GET+POST both handled
             'inserted' => $inserted,
             'skipped'  => $skipped,
             'errors'   => $errors,
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -439,8 +505,8 @@ if (isset($_GET['api'])) { // GET+POST both handled
     /* dashboard stats */
     if ($_GET['api'] === 'stats') {
         $pdo = db();
-        $today     = $pdo->query("SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE()")->fetchColumn();
-        $revenue   = $pdo->query("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE DATE(created_at)=CURDATE()")->fetchColumn();
+        $today     = $pdo->query("SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE() AND deleted_at IS NULL")->fetchColumn();
+        $revenue   = $pdo->query("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE DATE(created_at)=CURDATE() AND deleted_at IS NULL")->fetchColumn();
         $lowstock  = $pdo->query("SELECT COUNT(*) FROM menu_items WHERE stock_qty<=5 AND is_active=1")->fetchColumn();
         $pending   = $pdo->query("SELECT COUNT(*) FROM kds_queue WHERE status='pending'")->fetchColumn();
         echo json_encode(['ok'=>true,'today'=>$today,'revenue'=>$revenue,'low'=>$lowstock,'pending'=>$pending]);
@@ -1329,7 +1395,7 @@ async function api(action, body = null) {
   }
 }
 
-const fmt = n => '$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:2});
 
 /* ═══════════════════════════════════════
    LOGIN / LOGOUT
