@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoodleHaus — Kitchen Display</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=DM+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--yellow:#f0a500;--blue:#58a6ff;--green:#3fb950;--red:#f85149;--text:#e6edf3;--muted:#8b949e;--purple:#bc8cff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;}
+header{background:var(--panel);border-bottom:1px solid var(--border);padding:.8rem 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:'DM Sans',sans-serif;font-size:1.2rem;color:var(--yellow);font-weight:700;}
+.hdr-right{display:flex;align-items:center;gap:1.2rem;}
+.clock{font-size:.9rem;color:var(--muted);}
+.sse-pill{display:flex;align-items:center;gap:.4rem;font-size:.75rem;padding:.25rem .7rem;border-radius:50px;border:1px solid var(--border);}
+.sse-pill.live{color:var(--green);border-color:var(--green);}
+.sse-pill.wait{color:var(--yellow);border-color:var(--yellow);}
+.sse-pill.fail{color:var(--red);border-color:var(--red);}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+.blink{animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.sbar{background:#0a0d10;padding:.5rem 1.5rem;display:flex;gap:2rem;font-size:.8rem;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.sc{display:flex;align-items:center;gap:.4rem;}
+.sd{width:8px;height:8px;border-radius:50%;}
+.sd.p{background:var(--yellow);animation:blink 1.5s infinite;}
+.sd.r{background:var(--blue);}
+.sd.g{background:var(--green);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;padding:1.2rem 1.5rem;}
+.ticket{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;animation:pop .3s ease;}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.ticket.pending{border-top:3px solid var(--yellow);}
+.ticket.preparing{border-top:3px solid var(--blue);}
+.ticket.ready{border-top:3px solid var(--green);}
+.th{padding:.7rem 1rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
+.tid{font-size:1rem;font-weight:700;color:var(--blue);}
+.ttime{font-size:.75rem;color:var(--muted);}
+.tcust{padding:.4rem 1rem;font-size:.78rem;color:var(--purple);border-bottom:1px solid var(--border);}
+.titems{padding:.6rem 1rem;}
+.titem{display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:1px solid #1c2128;font-size:.88rem;}
+.titem:last-child{border:none;}
+.qty{background:var(--yellow);color:#000;width:22px;height:22px;border-radius:4px;display:grid;place-items:center;font-weight:700;font-size:.78rem;flex-shrink:0;}
+.tnotes{margin:.3rem 1rem .5rem;background:#1c2128;border-radius:6px;padding:.4rem .7rem;font-size:.78rem;color:var(--yellow);}
+.ttimer{font-size:.75rem;color:var(--muted);padding:0 1rem .5rem;text-align:right;}
+.ttimer.over{color:var(--red);}
+.tbtns{padding:.6rem 1rem;display:flex;gap:.5rem;border-top:1px solid var(--border);}
+.tbtn{flex:1;padding:.5rem;border:1px solid var(--border);background:none;color:var(--text);border-radius:6px;font-family:'DM Mono',monospace;font-size:.75rem;font-weight:700;cursor:pointer;transition:opacity .15s;text-transform:uppercase;letter-spacing:.05em;}
+.tbtn:hover{opacity:.7;}
+.tbtn.s{border-color:var(--blue);color:var(--blue);}
+.tbtn.r{border-color:var(--green);color:var(--green);}
+.tbtn.d{border-color:var(--muted);color:var(--muted);}
+.tbtn:disabled{opacity:.3;cursor:not-allowed;}
+.empty{grid-column:1/-1;text-align:center;padding:4rem 1rem;color:var(--muted);}
+.eicon{font-size:3rem;display:block;margin-bottom:.8rem;}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:.7rem 1.2rem;border-radius:8px;font-size:.82rem;transform:translateY(80px);opacity:0;transition:all .3s ease;max-width:280px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-color:var(--green);color:var(--green);}
+.toast.err{border-color:var(--red);color:var(--red);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">NoodleHaus KDS</div>
+  <div class="hdr-right">
+    <div class="sse-pill wait" id="pill">
+      <span class="dot blink"></span>
+      <span id="pill-txt">Connecting…</span>
+    </div>
+    <div class="clock" id="clk">--:--:--</div>
+  </div>
+</header>
+<div class="sbar">
+  <div class="sc"><span class="sd p"></span><span id="cn-p">0 Pending</span></div>
+  <div class="sc"><span class="sd r"></span><span id="cn-r">0 Preparing</span></div>
+  <div class="sc"><span class="sd g"></span><span id="cn-g">0 Ready</span></div>
+</div>
+<div class="grid" id="grid">
+  <div class="empty"><span class="eicon">👨‍🍳</span>Waiting for orders…</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── STATE ── */
+let orders = {};
+let maxId  = 0;
+let es     = null;
+let retryDelay = 2000;
+let timerInt   = null;
+
+/* ── CLOCK ── */
+setInterval(() => {
+  document.getElementById('clk').textContent =
+    new Date().toLocaleTimeString('en-GB');
+}, 1000);
+
+/* ── SSE ── */
+function connect() {
+  setPill('wait', 'Connecting…');
+  if (es) { es.close(); es = null; }
+
+  es = new EventSource('kds_stream.php?lastId=' + maxId);
+
+  es.addEventListener('init', e => {
+    const list = JSON.parse(e.data);
+    /* served ဖြတ်၊ active သာ ထည့် */
+    list
+      .filter(o => ['pending','preparing','ready'].includes(o.status))
+      .forEach(o => { orders[o.kds_id] = o; maxId = Math.max(maxId, o.kds_id); });
+    render();
+    setPill('live', 'Live');
+    retryDelay = 2000;
+  });
+
+  es.addEventListener('new_order', e => {
+    const o = JSON.parse(e.data);
+    if (!['pending','preparing','ready'].includes(o.status)) return;
+    orders[o.kds_id] = o;
+    maxId = Math.max(maxId, o.kds_id);
+    upsertTicket(o);
+    updateCounts();
+    showToast('New order: ' + o.order_ref, 'ok');
+    setPill('live', 'Live');
+  });
+
+  es.addEventListener('sse_error', () => {
+    setPill('fail', 'Error');
+  });
+
+  es.onerror = () => {
+    setPill('fail', 'Reconnecting…');
+    es.close(); es = null;
+    retryDelay = Math.min(retryDelay * 1.5, 10000);
+    setTimeout(connect, retryDelay);
+  };
+
+  es.onopen = () => {
+    setPill('live', 'Live');
+    retryDelay = 2000;
+  };
+}
+
+/* ── RENDER ALL ── */
+function render() {
+  const grid   = document.getElementById('grid');
+  const active = Object.values(orders).filter(o =>
+    ['pending','preparing','ready'].includes(o.status)
+  );
+  updateCounts();
+  if (active.length === 0) {
+    grid.innerHTML = '<div class="empty"><span class="eicon">👨‍🍳</span>No active orders — standing by</div>';
+    return;
+  }
+  const ord = {pending:0, preparing:1, ready:2};
+  active.sort((a,b) => (ord[a.status]??9)-(ord[b.status]??9) || new Date(a.time)-new Date(b.time));
+  grid.innerHTML = active.map(ticketHTML).join('');
+  resetTimerInterval();
+}
+
+/* ── SINGLE TICKET UPSERT (no full re-render) ── */
+function upsertTicket(o) {
+  const grid = document.getElementById('grid');
+  const empty = grid.querySelector('.empty');
+  if (empty) empty.remove();
+  const existing = document.getElementById('tk-' + o.kds_id);
+  const html = ticketHTML(o);
+  if (existing) {
+    existing.outerHTML = html;
+  } else {
+    grid.insertAdjacentHTML('afterbegin', html);
+  }
+  resetTimerInterval();
+}
+
+/* ── TICKET HTML ── */
+function ticketHTML(o) {
+  const mins = Math.floor((Date.now() - new Date(o.time)) / 60000);
+  const over = mins > 20;
+  const items = (o.items || []).map(i =>
+    `<div class="titem"><span class="qty">${i.qty}</span><span>${i.name}</span></div>`
+  ).join('');
+  let btn = '';
+  if (o.status === 'pending')   btn = `<button class="tbtn s" onclick="doUpdate(${o.kds_id},'preparing')">▶ Start</button>`;
+  if (o.status === 'preparing') btn = `<button class="tbtn r" onclick="doUpdate(${o.kds_id},'ready')">✔ Ready</button>`;
+  if (o.status === 'ready')     btn = `<button class="tbtn d" onclick="doUpdate(${o.kds_id},'served')">↗ Served</button>`;
+  return `
+    <div class="ticket ${o.status}" id="tk-${o.kds_id}">
+      <div class="th">
+        <span class="tid">${o.order_ref}</span>
+        <span class="ttime">${new Date(o.time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
+      </div>
+      <div class="tcust">${o.customer}</div>
+      <div class="titems">${items}</div>
+      ${o.notes ? `<div class="tnotes">📝 ${o.notes}</div>` : ''}
+      <div class="ttimer${over?' over':''}" data-time="${o.time}" id="tmr-${o.kds_id}">⏱ ${mins}m ago${over?' — OVERDUE':''}</div>
+      <div class="tbtns">${btn}</div>
+    </div>`;
+}
+
+/* ── UPDATE STATUS ── */
+async function doUpdate(kdsId, newStatus) {
+  const btn = document.querySelector(`#tk-${kdsId} .tbtn`);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const res  = await fetch('kds_update.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({kds_id: kdsId, status: newStatus})
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message);
+
+    if (newStatus === 'served') {
+      delete orders[kdsId];
+      const tk = document.getElementById('tk-' + kdsId);
+      if (tk) {
+        tk.style.transition = 'opacity .4s';
+        tk.style.opacity = '0';
+        setTimeout(() => { tk.remove(); updateCounts(); checkEmpty(); }, 420);
+      }
+    } else {
+      if (orders[kdsId]) orders[kdsId].status = newStatus;
+      upsertTicket(orders[kdsId]);
+      updateCounts();
+    }
+    showToast(newStatus === 'served' ? 'Order served!' : 'Status updated', 'ok');
+  } catch(err) {
+    showToast('Failed: ' + err.message, 'err');
+    if (btn) { btn.disabled = false; }
+    render();
+  }
+}
+
+/* ── HELPERS ── */
+function updateCounts() {
+  const a = Object.values(orders);
+  document.getElementById('cn-p').textContent = a.filter(o=>o.status==='pending').length   + ' Pending';
+  document.getElementById('cn-r').textContent = a.filter(o=>o.status==='preparing').length + ' Preparing';
+  document.getElementById('cn-g').textContent = a.filter(o=>o.status==='ready').length     + ' Ready';
+}
+
+function checkEmpty() {
+  const grid = document.getElementById('grid');
+  if (!grid.querySelector('.ticket')) {
+    grid.innerHTML = '<div class="empty"><span class="eicon">👨‍🍳</span>No active orders — standing by</div>';
+  }
+}
+
+function resetTimerInterval() {
+  clearInterval(timerInt);
+  timerInt = setInterval(() => {
+    document.querySelectorAll('[id^="tmr-"]').forEach(el => {
+      const mins = Math.floor((Date.now() - new Date(el.dataset.time)) / 60000);
+      const over = mins > 20;
+      el.textContent = `⏱ ${mins}m ago${over?' — OVERDUE':''}`;
+      el.classList.toggle('over', over);
+    });
+  }, 30000);
+}
+
+function setPill(state, txt) {
+  const p = document.getElementById('pill');
+  const d = p.querySelector('.dot');
+  p.className = 'sse-pill ' + (state==='live'?'live':state==='fail'?'fail':'wait');
+  d.className = 'dot' + (state==='live'?'':' blink');
+  document.getElementById('pill-txt').textContent = txt;
+}
+
+let toastTmr;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type||'');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+connect();
+</script>
+</body>
+</html>
