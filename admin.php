@@ -324,23 +324,36 @@ if (isset($_GET['api'])) { // GET+POST both handled
 
             if (!$name)  { $errors[] = ['row'=>$lineNum+2,'msg'=>'Name ဗလာ']; continue; }
             if ($price<0){ $errors[] = ['row'=>$lineNum+2,'msg'=>'Price မမှန်']; continue; }
-            // Case-insensitive category match
+            // Category mapping — English + Myanmar aliases
+            $catAliases = [
+                'Noodles'  => ['noodles','noodle','ခေါက်ဆွဲ','မုန့်','မုန်','noodle dish'],
+                'Rice'     => ['rice','ထမင်း','ကြော်ထမင်း'],
+                'Starters' => ['starters','starter','appetizer','appetisers','အစာဦး','ဆာလောင်မွတ်သိပ်'],
+                'Soups'    => ['soups','soup','ဟင်းချို','ဟင်းရည်','ဟင်း'],
+                'Desserts' => ['desserts','dessert','အချိုပွဲ','မုန့်ချို','dessert'],
+                'Drinks'   => ['drinks','drink','beverage','beverages','အချိုရည်','ဖျော်ရည်','လက်ဖက်ရည်','ကော်ဖီ'],
+            ];
             $catMatch = '';
-            foreach ($validCats as $vc) {
-                if (mb_strtolower($cat,'UTF-8') === mb_strtolower($vc,'UTF-8')) {
-                    $catMatch = $vc; break;
+            $catLower = mb_strtolower(trim($cat), 'UTF-8');
+            foreach ($catAliases as $canonical => $aliases) {
+                // Exact match (case-insensitive)
+                if (mb_strtolower($canonical,'UTF-8') === $catLower) {
+                    $catMatch = $canonical; break;
                 }
-            }
-            if (!$catMatch) {
-                // ပထမစာလုံး ကြည့်ပြီး ရှာ
-                foreach ($validCats as $vc) {
-                    if (mb_stripos($vc, $cat, 0, 'UTF-8') !== false ||
-                        mb_stripos($cat, $vc, 0, 'UTF-8') !== false) {
-                        $catMatch = $vc; break;
+                foreach ($aliases as $alias) {
+                    if (mb_strtolower($alias,'UTF-8') === $catLower ||
+                        mb_stripos($catLower, $alias, 0, 'UTF-8') !== false ||
+                        mb_stripos($alias, $catLower, 0, 'UTF-8') !== false) {
+                        $catMatch = $canonical; break 2;
                     }
                 }
             }
-            $cat = $catMatch ?: 'Noodles';
+            if (!$catMatch) {
+                // Still no match — add error note but use Noodles as default
+                $errors[] = ['row'=>$lineNum+2, 'msg'=>"Category မသိ: '{$cat}' → Noodles ထားသည်"];
+                $catMatch = 'Noodles';
+            }
+            $cat = $catMatch;
             $rows[] = compact('name','cat','price','stock','emoji','desc');
         }
 
@@ -657,10 +670,83 @@ tr.dragging{opacity:.4;}
 tr.drop-above{box-shadow:0 -2px 0 var(--accent);}
 tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 
-@media(max-width:768px){
-  .sidebar{display:none;}
+/* ════ MOBILE RESPONSIVE ════ */
+/* Bottom nav bar (mobile only) */
+.mobile-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:200;
+  background:var(--ink);border-top:1px solid rgba(255,255,255,.15);
+  padding:.4rem 0 calc(.4rem + env(safe-area-inset-bottom));
+}
+.mobile-nav-inner{display:flex;justify-content:space-around;align-items:center;}
+.mnav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;color:rgba(255,255,255,.6);
+  font-family:'DM Sans',sans-serif;font-size:.62rem;font-weight:500;
+  cursor:pointer;padding:.35rem .6rem;border-radius:8px;
+  transition:color .15s;min-width:56px;
+}
+.mnav-btn:hover,.mnav-btn.active{color:#fff;}
+.mnav-btn.active{color:var(--accent2);}
+.mnav-icon{font-size:1.25rem;line-height:1;}
+
+/* Hamburger button (tablet) */
+.hamburger{
+  display:none;background:none;border:none;
+  color:var(--paper);font-size:1.4rem;cursor:pointer;
+  padding:.3rem .5rem;margin-left:.5rem;
+}
+
+/* Overlay when sidebar open on mobile */
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.5);z-index:149;
+}
+.sidebar-overlay.open{display:block;}
+
+@media(max-width:900px){
+  .sidebar{
+    position:fixed;left:-240px;top:0;bottom:0;
+    z-index:150;width:240px;
+    transition:left .25s ease;
+    box-shadow:4px 0 20px rgba(0,0,0,.3);
+  }
+  .sidebar.open{left:0;}
+  .main{width:100%;}
+  .hamburger{display:block;}
   .content{padding:1rem;}
   .stats-grid{grid-template-columns:1fr 1fr;}
+  .page-head{padding:1rem;}
+  .table-wrap{overflow-x:auto;}
+  table{min-width:600px;}
+}
+
+@media(max-width:600px){
+  .mobile-nav{display:block;}
+  .main{padding-bottom:72px;} /* space for bottom nav */
+  .hamburger{display:none;}   /* bottom nav replaces hamburger on small screens */
+  .sidebar{display:none !important;} /* hide sidebar — use bottom nav instead */
+  .sidebar-overlay{display:none !important;}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:.6rem;}
+  .stat-card{padding:.8rem;}
+  .stat-val{font-size:1.3rem;}
+  .page-head{
+    padding:.8rem 1rem;
+    flex-wrap:wrap;gap:.5rem;
+  }
+  .page-title{font-size:1.1rem;}
+  .content{padding:.8rem;}
+  .btn{padding:.4rem .7rem;font-size:.78rem;}
+  .modal{border-radius:14px 14px 0 0;max-height:95vh;
+         position:fixed;bottom:0;left:0;right:0;width:100%;max-width:100%;}
+  .modal-bg{align-items:flex-end;padding:0;}
+  .form-grid{grid-template-columns:1fr;}
+  .reason-grid{grid-template-columns:1fr;}
+  th,td{padding:.5rem .6rem;font-size:.78rem;}
+  .drag-handle{display:none;} /* hide drag on mobile — reorder not practical */
+  .payment-grid{grid-template-columns:repeat(3,1fr);}
+  .cat-tabs{gap:.4rem;}
+  .cat-tab{padding:.3rem .7rem;font-size:.75rem;}
 }
 
 /* DELETE ORDER MODAL */
@@ -712,10 +798,16 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 </div>
 <?php else: ?>
 <!-- ═══════════ ADMIN APP ═══════════ -->
+<!-- Sidebar overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
 <div class="app" id="app">
   <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="sidebar-logo">🍜 Noodle<span>Haus</span><span class="sidebar-badge">Admin</span></div>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="display:flex;align-items:center;justify-content:space-between">
+      <span>🍜 Noodle<span>Haus</span><span class="sidebar-badge">Admin</span></span>
+      <button onclick="closeSidebar()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.2rem;cursor:pointer;display:none" id="sidebar-close-btn">✕</button>
+    </div>
     <nav>
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
         <span class="nav-icon">📊</span> Dashboard
@@ -740,7 +832,10 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <!-- ── DASHBOARD ── -->
     <div id="page-dashboard">
       <div class="page-head">
-        <div class="page-title">Dashboard</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <button class="hamburger" onclick="openSidebar()" title="Menu">☰</button>
+          <div class="page-title">Dashboard</div>
+        </div>
         <span style="font-size:.82rem;color:var(--muted)" id="dash-date"></span>
       </div>
       <div class="content">
@@ -771,11 +866,14 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <!-- ── MENU ITEMS ── -->
     <div id="page-menu" style="display:none">
       <div class="page-head">
-        <div class="page-title">Menu Items</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <button class="hamburger" onclick="openSidebar()" title="Menu">☰</button>
+          <div class="page-title">Menu Items</div>
+        </div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ CSV Template</button>
-          <button class="btn btn-ghost btn-sm" onclick="openBatchModal()">📥 Batch Upload</button>
-          <button class="btn btn-primary" onclick="openAddModal()">+ Add Item</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="openBatchModal()">📥 Batch</button>
+          <button class="btn btn-primary" onclick="openAddModal()">+ Add</button>
         </div>
       </div>
       <div class="content">
@@ -803,8 +901,11 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <!-- ── SETTINGS PAGE (CMS) ── -->
     <div id="page-settings" style="display:none">
       <div class="page-head">
-        <div class="page-title">Site Settings</div>
-        <button class="btn btn-primary" onclick="saveSettings()">💾 Save All</button>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <button class="hamburger" onclick="openSidebar()" title="Menu">☰</button>
+          <div class="page-title">Site Settings</div>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Save</button>
       </div>
       <div class="content">
 
@@ -1119,10 +1220,13 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <!-- ── ORDERS PAGE ── -->
     <div id="page-orders" style="display:none">
       <div class="page-head">
-        <div class="page-title">All Orders</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <button class="hamburger" onclick="openSidebar()" title="Menu">☰</button>
+          <div class="page-title">All Orders</div>
+        </div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-ghost btn-sm" onclick="showDeletedLog()">📁 Deleted Archive</button>
-          <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↺ Refresh</button>
+          <button class="btn btn-ghost btn-sm" onclick="showDeletedLog()">📁 Archive</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↺</button>
         </div>
       </div>
       <div class="content">
@@ -1225,7 +1329,8 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <div style="background:var(--warm);border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:.85rem;line-height:1.8;border:1px solid var(--border)">
           <strong>CSV format (ပထမ row = header) —</strong><br>
           <code style="font-size:.8rem">name, category, price, stock, emoji, description</code><br>
-          <span style="color:var(--muted)">Category: Noodles / Rice / Starters / Soups / Desserts / Drinks</span><br>
+          <span style="color:var(--muted)">Category (English): Noodles / Rice / Starters / Soups / Desserts / Drinks</span><br>
+          <span style="color:var(--muted)">Myanmar aliases: ခေါက်ဆွဲ=Noodles · ထမင်း=Rice · ဟင်းချို=Soups · အချိုရည်=Drinks</span><br>
           <span style="color:var(--muted)">Price: dollar cents မဟုတ်ဘဲ display value (e.g. 4.50)</span>
         </div>
 
@@ -1362,6 +1467,27 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
   </div>
 </div>
 
+<!-- MOBILE BOTTOM NAV -->
+<div class="mobile-nav" id="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mnav-btn active" id="mnav-dashboard" onclick="showPage('dashboard')">
+      <span class="mnav-icon">📊</span>Dashboard
+    </button>
+    <button class="mnav-btn" id="mnav-menu" onclick="showPage('menu')">
+      <span class="mnav-icon">🍜</span>Menu
+    </button>
+    <button class="mnav-btn" id="mnav-orders" onclick="showPage('orders')">
+      <span class="mnav-icon">📋</span>Orders
+    </button>
+    <button class="mnav-btn" id="mnav-settings" onclick="showPage('settings')">
+      <span class="mnav-icon">⚙️</span>Settings
+    </button>
+    <button class="mnav-btn" onclick="doLogout()">
+      <span class="mnav-icon">↩</span>Logout
+    </button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1421,11 +1547,38 @@ function showPage(page) {
   ['dashboard','menu','orders','settings'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
+    // Mobile bottom nav sync
+    const mb = document.getElementById('mnav-'+p);
+    if (mb) mb.classList.toggle('active', p===page);
   });
   if (page==='dashboard') { loadStats(); loadOrders(); }
   if (page==='menu')      { loadMenuItems(); }
   if (page==='orders')    { loadOrders(); }
   if (page==='settings')  { loadSettings(); }
+  // Close sidebar on mobile after nav
+  closeSidebar();
+  // Scroll to top
+  document.querySelector('.main')?.scrollTo(0,0);
+}
+
+/* ── Sidebar open/close (tablet/mobile) ── */
+function openSidebar() {
+  const sb  = document.getElementById('sidebar');
+  const ov  = document.getElementById('sidebar-overlay');
+  const cl  = document.getElementById('sidebar-close-btn');
+  if (sb) sb.classList.add('open');
+  if (ov) ov.classList.add('open');
+  if (cl) cl.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  const sb  = document.getElementById('sidebar');
+  const ov  = document.getElementById('sidebar-overlay');
+  const cl  = document.getElementById('sidebar-close-btn');
+  if (sb) sb.classList.remove('open');
+  if (ov) ov.classList.remove('open');
+  if (cl) cl.style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 /* ═══════════════════════════════════════
@@ -1806,12 +1959,15 @@ function toast(msg, type='') {
    BATCH UPLOAD
 ═══════════════════════════════════════ */
 const CSV_TEMPLATE = `name,category,price,stock,emoji,description
-Mohinga,Noodles,4.50,20,🍲,Traditional fish-broth noodle soup
-Shan Noodles,Noodles,4.00,15,🍜,Light pork-broth rice noodles
-Ramen Bowl,Noodles,6.00,8,🍥,Japanese-style ramen with chashu pork
-Chicken Satay,Starters,4.00,30,🍡,Grilled skewers with peanut sauce
-Tom Yum Soup,Soups,4.50,14,🫕,Hot and sour Thai soup with prawns
-Taro Bubble Tea,Drinks,2.50,40,🧋,Creamy taro milk tea with tapioca`;
+မုန့်ဟင်းခါး,Noodles,4500,20,🍲,ငါးဆောက်ဟင်းချို မုန့်ဟင်းခါး
+Shan Noodles,Noodles,4000,15,🍜,Light pork-broth rice noodles
+Ramen Bowl,Noodles,6000,8,🍥,Japanese-style ramen with chashu pork
+ကြက်သားကင်,Starters,4000,30,🍡,Grilled skewers with peanut sauce
+Tom Yum Soup,Soups,4500,14,🫕,Hot and sour Thai soup with prawns
+Taro Bubble Tea,Drinks,2500,40,🧋,Creamy taro milk tea with tapioca`;
+
+// Category valid values: Noodles, Rice, Starters, Soups, Desserts, Drinks
+// Myanmar aliases also accepted: ခေါက်ဆွဲ=Noodles, ထမင်း=Rice, ဟင်းချို=Soups, အချိုရည်=Drinks
 
 let batchPreviewRows = [];
 

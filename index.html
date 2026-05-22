@@ -132,6 +132,35 @@
     .main-wrap { grid-template-columns: 1fr; }
     .sidebar { position: static !important; }
   }
+  /* ── MOBILE CART DRAWER ── */
+  .cart-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(26,18,9,.6); z-index: 100;
+    backdrop-filter: blur(3px);
+  }
+  .cart-overlay.open { display: block; }
+  @media (max-width: 600px) {
+    .main-wrap { padding: .8rem; gap: 1rem; }
+    .sidebar {
+      position: fixed !important; bottom: 0; left: 0; right: 0;
+      z-index: 101; border-radius: 20px 20px 0 0;
+      max-height: 80vh; overflow-y: auto;
+      transform: translateY(100%); transition: transform .3s ease;
+      box-shadow: 0 -8px 40px rgba(26,18,9,.3);
+    }
+    .sidebar.cart-open { transform: translateY(0); }
+    .menu-grid { grid-template-columns: repeat(2,1fr); gap: .7rem; }
+    .card-body { padding: .7rem; }
+    .card-desc { display: none; }
+    .card-name { font-size: .82rem; }
+    .card-price { font-size: .82rem; }
+    .add-btn { padding: .25rem .6rem; font-size: .72rem; }
+    .hero { padding: 1.5rem 1rem; }
+    .hero-text h1 { font-size: 1.6rem; }
+    .section-title { font-size: 1.1rem; }
+    .categories { gap: .4rem; }
+    .cat-btn { padding: .3rem .7rem; font-size: .75rem; }
+  }
 
   /* ── CATEGORIES ── */
   .categories {
@@ -445,6 +474,60 @@
     padding: .4rem .9rem; border-radius: 50px; font-size: .82rem; font-weight: 600;
   }
 
+  /* ── ORDER STATUS TRACKER (sidebar) ── */
+  .order-tracker {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    overflow: hidden; margin-top: .8rem;
+    animation: slideIn .3s ease;
+  }
+  .ot-head {
+    background: var(--ink); color: var(--paper);
+    padding: .8rem 1.1rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ot-head h4 { font-size: .88rem; font-weight: 600; }
+  .ot-body { padding: .9rem 1.1rem; }
+  .ot-ref {
+    font-family: 'DM Mono', monospace; font-size: .9rem;
+    font-weight: 700; color: var(--accent); margin-bottom: .6rem;
+  }
+  .ot-steps { display: flex; flex-direction: column; gap: 0; }
+  .ot-step {
+    display: flex; align-items: center; gap: .7rem;
+    padding: .35rem 0; position: relative;
+  }
+  .ot-step:not(:last-child)::after {
+    content: ''; position: absolute; left: 11px; top: 28px;
+    width: 2px; height: calc(100% - 8px);
+    background: var(--border);
+  }
+  .ot-step.done::after  { background: var(--accent); }
+  .ot-dot {
+    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .75rem; border: 2px solid var(--border);
+    background: var(--warm); color: var(--muted); z-index: 1;
+  }
+  .ot-step.done   .ot-dot { background: var(--accent);  border-color: var(--accent);  color: #fff; }
+  .ot-step.active .ot-dot { background: var(--accent2); border-color: var(--accent2); color: var(--ink); animation: pulse-icon 1.2s infinite; }
+  @keyframes pulse-icon { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+  .ot-label { font-size: .82rem; font-weight: 500; }
+  .ot-step.pending-step .ot-label { color: var(--muted); }
+  .ot-time  { font-size: .72rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .ot-refresh {
+    width: 100%; padding: .5rem; border: 1px solid var(--border);
+    border-radius: 8px; background: none; font-size: .8rem;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    color: var(--ink); margin-top: .6rem; transition: all .15s;
+  }
+  .ot-refresh:hover { background: var(--warm); }
+  .ot-dismiss {
+    background: none; border: none; color: rgba(255,255,255,.6);
+    cursor: pointer; font-size: 1rem; padding: 0;
+  }
+  .ot-dismiss:hover { color: #fff; }
+
   /* ── KDS PANEL (demo) ── */
   .kds-panel {
     margin-top: 2rem;
@@ -600,7 +683,7 @@
   <div class="logo"><span id="store-emoji">🍜</span> <span id="store-name-logo">Noodle<span>Haus</span></span></div>
   <div class="header-right">
     <span style="font-size:.85rem;color:#b8a48a;display:none" id="header-status">● Open until 10 PM</span>
-    <button class="cart-btn" onclick="openCheckout()">
+    <button class="cart-btn" id="header-cart-btn" onclick="toggleMobileCart()">
       🛒 Cart <span id="cart-count">0</span>
     </button>
   </div>
@@ -617,6 +700,9 @@
     <p id="hero-subtitle">Freshly prepared, delivered hot. Order online, pay instantly.</p>
   </div>
 </div>
+
+<!-- ── CART OVERLAY (mobile) ── -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeMobileCart()"></div>
 
 <!-- ── MAIN WRAP ── -->
 <div class="main-wrap">
@@ -642,6 +728,19 @@
         <div class="total-row"><span>Delivery fee</span><span id="delivery-val">$1.50</span></div>
         <div class="total-row grand"><span>Total</span><span id="total-val">$0.00</span></div>
         <button class="checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
+      </div>
+    </div>
+
+    <!-- ORDER STATUS TRACKER -->
+    <div class="order-tracker" id="order-tracker" style="display:none">
+      <div class="ot-head">
+        <h4>📍 Order Status</h4>
+        <button class="ot-dismiss" onclick="dismissTracker()" title="Dismiss">✕</button>
+      </div>
+      <div class="ot-body">
+        <div class="ot-ref" id="ot-ref">NH-000000</div>
+        <div class="ot-steps" id="ot-steps"></div>
+        <button class="ot-refresh" onclick="refreshTracker()">↺ Refresh</button>
       </div>
     </div>
 
@@ -1196,6 +1295,13 @@ function renderCart() {
 function openCheckout() {
   if (cartCount() === 0) { showToast('🛒 Your cart is empty!'); return; }
   const modal = document.getElementById('checkout-modal');
+
+  // modal ဖွင့်တိုင်း form ပြန်ပြ (success screen ဖျောက်)
+  document.getElementById('modal-body').style.display = '';
+  document.getElementById('success-screen').classList.remove('show');
+  const btn = document.getElementById('submit-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Place Order & Pay →'; }
+
   // Populate order summary
   const sub = cartTotal();
   document.getElementById('order-summary-items').innerHTML =
@@ -1215,19 +1321,27 @@ function openCheckout() {
 
 function closeCheckout(afterSuccess = false) {
   document.getElementById('checkout-modal').classList.remove('open');
+
+  // modal reset
+  document.getElementById('modal-body').style.display = '';
+  document.getElementById('success-screen').classList.remove('show');
+  const btn = document.getElementById('submit-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Place Order & Pay →'; }
+  clearInterval(trackInterval);
+
   if (afterSuccess) {
+    // Order ပြီးပြီ — cart ရှင်းပြီး tracker ပြ
     cart = {};
     renderCart();
     renderMenu();
-    /* submit button ပြန် reset */
-    const btn = document.getElementById('submit-btn');
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Place Order & Pay →'; }
+    if (currentDbId) showSidebarTracker();
   }
+  // ✕ နှိပ်ရင် (afterSuccess=false) — order မပြီးသေးရင် cart မထိ
 }
 
 function startNewOrder() {
-  /* cart ရှင်း၊ modal ပိတ်၊ button reset */
   cart = {};
+  currentDbId = null;
   renderCart();
   renderMenu();
   document.getElementById('checkout-modal').classList.remove('open');
@@ -1235,6 +1349,8 @@ function startNewOrder() {
   document.getElementById('success-screen').classList.remove('show');
   const btn = document.getElementById('submit-btn');
   if (btn) { btn.disabled = false; btn.innerHTML = 'Place Order & Pay →'; }
+  // Tracker ဖျောက် (new order ဆိုမို့)
+  hideTracker();
 }
 
 function selectPayment(el, method) {
@@ -1308,6 +1424,9 @@ async function submitOrder() {
 
 function showSuccess(orderId, order, dbId) {
   currentDbId = dbId || null;
+  window._lastOrderRef = orderId; // e.g. "NH-000015"
+  // Pre-load tracker data
+  if (currentDbId) refreshTracker();
   document.getElementById('modal-body').style.display = 'none';
   const sc = document.getElementById('success-screen');
   sc.classList.add('show');
@@ -1382,6 +1501,72 @@ function showToast(msg) {
 
 
 /* ─────────────────────────────────────────────
+   SIDEBAR ORDER TRACKER
+───────────────────────────────────────────── */
+let trackerInterval = null;
+
+function showSidebarTracker() {
+  if (!currentDbId) return;
+  document.getElementById('order-tracker').style.display = 'block';
+  // ot-ref ကို ချက်ချင်း set — fetch မပြီးခင်ကြာမည်မို့
+  const refEl = document.getElementById('ot-ref');
+  if (refEl && window._lastOrderRef) refEl.textContent = window._lastOrderRef;
+  refreshTracker();
+  clearInterval(trackerInterval);
+  trackerInterval = setInterval(refreshTracker, 15000);
+}
+
+function hideTracker() {
+  document.getElementById('order-tracker').style.display = 'none';
+  clearInterval(trackerInterval);
+}
+
+function dismissTracker() {
+  hideTracker();
+  currentDbId = null;
+}
+
+async function refreshTracker() {
+  if (!currentDbId) return;
+  try {
+    const r = await fetch('track.php?id=' + currentDbId);
+    const d = await r.json();
+    if (!d.ok) return;
+    renderSidebarTracker(d.order);
+    // Stop polling if delivered
+    if (d.order.kds_status === 'served' || d.order.status === 'delivered') {
+      clearInterval(trackerInterval);
+    }
+  } catch(e) { /* silent fail */ }
+}
+
+function renderSidebarTracker(o) {
+  window._lastOrderRef = o.id;
+  document.getElementById('ot-ref').textContent = o.id;
+  const kds = o.kds_status || 'pending';
+  const steps = [
+    { key:'pending',   icon:'🛒', label:'Order Received',    time: o.created_at },
+    { key:'preparing', icon:'👨‍🍳', label:'Kitchen Preparing', time: o.started_at },
+    { key:'ready',     icon:'✅', label:'Ready',              time: o.ready_at },
+    { key:'delivered', icon:'🛵', label:'Delivered',          time: null },
+  ];
+  const order  = ['pending','preparing','ready','delivered'];
+  const active = order.indexOf(kds === 'served' ? 'delivered' : kds);
+
+  document.getElementById('ot-steps').innerHTML = steps.map((s,i) => {
+    const cls  = i < active ? 'done' : i === active ? 'active' : 'pending-step';
+    const time = s.time ? new Date(s.time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="ot-step ${cls}">
+      <div class="ot-dot">${s.icon}</div>
+      <div>
+        <div class="ot-label">${s.label}</div>
+        ${time ? `<div class="ot-time">${time}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────
    ORDER TRACKING
 ───────────────────────────────────────────── */
 let currentDbId = null;   // DB integer id ကိုသိမ်း
@@ -1390,11 +1575,14 @@ let trackInterval = null;
 /* showSuccess မှာ db_id သိမ်းထားမည် */
 function openTrack() {
   if (!currentDbId) { showToast('⚠️ No order to track'); return; }
-  document.getElementById('track-modal').classList.add('open');
-  loadTrack();
-  /* 10s တစ်ကြိမ် auto-refresh */
-  clearInterval(trackInterval);
-  trackInterval = setInterval(loadTrack, 10000);
+  // Close modal first, then show sidebar tracker
+  document.getElementById('checkout-modal').classList.remove('open');
+  document.getElementById('modal-body').style.display = '';
+  document.getElementById('success-screen').classList.remove('show');
+  cart = {};
+  renderCart();
+  renderMenu();
+  showSidebarTracker();
 }
 
 function closeTrack() {
@@ -1491,6 +1679,44 @@ function renderTrack(o, items) {
 }
 
 /* ─────────────────────────────────────────────
+   MOBILE CART DRAWER
+───────────────────────────────────────────── */
+function isMobile() { return window.innerWidth <= 600; }
+
+function toggleMobileCart() {
+  if (isMobile()) {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('cart-overlay');
+    if (sidebar.classList.contains('cart-open')) {
+      closeMobileCart();
+    } else {
+      sidebar.classList.add('cart-open');
+      overlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+  } else {
+    openCheckout();
+  }
+}
+
+function closeMobileCart() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('cart-overlay');
+  if (sidebar) sidebar.classList.remove('cart-open');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Badge bounce animation on cart update (non-recursive)
+function cartBadgeBounce() {
+  const badge = document.getElementById('cart-count');
+  if (badge) {
+    badge.style.transform = 'scale(1.4)';
+    setTimeout(() => badge.style.transform = '', 200);
+  }
+}
+
+/* ─────────────────────────────────────────────
    INIT
 ───────────────────────────────────────────── */
 /* DB မှ menu load လုပ်ပြီးမှ render */
@@ -1503,7 +1729,7 @@ function renderTrack(o, items) {
 
 // Close modal on overlay click
 document.getElementById('checkout-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeCheckout();
+  if (e.target === this) closeCheckout(false); // ✕ click — cart မရှင်း
 });
 
 // Stock ကို 60s တစ်ကြိမ် DB မှ refresh
