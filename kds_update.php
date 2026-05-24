@@ -1,55 +1,86 @@
 <?php
 declare(strict_types=1);
-
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST')    { jsonError('Method not allowed', 405); }
 
-define('DB_HOST', 'localhost'); define('DB_PORT', '3306');
-define('DB_NAME', 'noodlehaus'); define('DB_USER', 'root'); define('DB_PASS', '');
+$b = json_decode(file_get_contents('php://input'), true) ?? [];
+$kdsId  = (int)($b['kds_id'] ?? 0);
+$status = trim($b['status'] ?? '');
+$note   = trim($b['note'] ?? '');
+$reason = trim($b['cancel_reason'] ?? '');
 
-$body   = json_decode(file_get_contents('php://input'), true);
-$kdsId  = (int)($body['kds_id'] ?? 0);
-$status = trim($body['status'] ?? '');
+if (!$kdsId) { echo json_encode(['ok'=>false,'msg'=>'No kds_id']); exit; }
 
-if ($kdsId <= 0) jsonError('Invalid kds_id');
-if (!in_array($status, ['preparing','ready','served'])) jsonError('Invalid status');
+define('DB_HOST','localhost'); define('DB_PORT','3306');
+define('DB_NAME','noodlehaus'); define('DB_USER','root'); define('DB_PASS','');
 
 try {
     $pdo = new PDO(
-        "mysql:host=".DB_HOST.";port=".DB_PORT.";dbname=".DB_NAME.";charset=utf8mb4",
+        sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', DB_HOST, DB_PORT, DB_NAME),
         DB_USER, DB_PASS,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]
     );
-} catch (PDOException $e) { jsonError('DB connection failed', 503); }
+} catch (PDOException $e) { echo json_encode(['ok'=>false,'msg'=>'DB error']); exit; }
 
-try {
-    $extra = match($status) {
-        'preparing' => ', started_at = NOW()',
-        'ready'     => ', ready_at = NOW()',
-        default     => ''
-    };
-    $s = $pdo->prepare("UPDATE kds_queue SET status = :status {$extra} WHERE id = :id");
-    $s->execute([':status' => $status, ':id' => $kdsId]);
-    if ($s->rowCount() === 0) jsonError('Ticket not found', 404);
-
-    $oMap = ['preparing' => 'preparing', 'ready' => 'ready', 'served' => 'delivered'];
-    $pdo->prepare("
-        UPDATE orders o JOIN kds_queue kq ON kq.order_id = o.id
-        SET o.status = :os WHERE kq.id = :kid
-    ")->execute([':os' => $oMap[$status], ':kid' => $kdsId]);
-
-    echo json_encode(['success' => true, 'kds_id' => $kdsId, 'status' => $status]);
-} catch (PDOException $e) {
-    jsonError('Update failed', 500);
+// ── Save note ──
+if ($note && !$status) {
+    // Append note to order special_notes
+    $row = $pdo->prepare("SELECT order_id FROM kds_queue WHERE id=:id")->execute([':id'=>$kdsId]);
+    $row = $pdo->prepare("SELECT order_id FROM kds_queue WHERE id=:id");
+    $row->execute([':id'=>$kdsId]);
+    $r = $row->fetch();
+    if ($r) {
+        $pdo->prepare("UPDATE orders SET special_notes = CONCAT(IFNULL(special_notes,''), ' | Kitchen: ', :note) WHERE id=:oid")
+            ->execute([':note'=>$note, ':oid'=>$r['order_id']]);
+    }
+    echo json_encode(['ok'=>true]); exit;
 }
 
-function jsonError(string $m, int $c = 400): never {
-    http_response_code($c);
-    echo json_encode(['success' => false, 'message' => $m]);
-    exit;
+// ── Cancel order ──
+if ($status === 'cancelled') {
+    $row = $pdo->prepare("SELECT order_id FROM kds_queue WHERE id=:id");
+    $row->execute([':id'=>$kdsId]);
+    $r = $row->fetch();
+    if ($r) {
+        $pdo->prepare("UPDATE orders SET status='cancelled', delete_reason=:reason WHERE id=:oid")
+            ->execute([':reason'=>($reason ?: 'Cancelled by kitchen'), ':oid'=>$r['order_id']]);
+        $pdo->prepare("UPDATE kds_queue SET status='served' WHERE id=:id")
+            ->execute([':id'=>$kdsId]);
+    }
+    echo json_encode(['ok'=>true]); exit;
 }
+
+// ── Status update ──
+$valid = ['preparing','ready','served'];
+if (!in_array($status, $valid)) { echo json_encode(['ok'=>false,'msg'=>'Invalid status']); exit; }
+
+$timeCol = match($status) {
+    'preparing' => ', started_at=NOW()',
+    'ready'     => ', ready_at=NOW()',
+    default     => '',
+};
+
+$pdo->prepare("UPDATE kds_queue SET status=:s{$timeCol} WHERE id=:id")
+    ->execute([':s'=>$status, ':id'=>$kdsId]);
+
+// Sync orders table for every status change
+$orderStatus = match($status) {
+    'preparing' => 'preparing',
+    'ready'     => 'ready',
+    'served'    => 'delivered',
+    default     => null,
+};
+
+if ($orderStatus) {
+    $row = $pdo->prepare("SELECT order_id FROM kds_queue WHERE id=:id");
+    $row->execute([':id'=>$kdsId]);
+    $r = $row->fetch();
+    if ($r) {
+        $pdo->prepare("UPDATE orders SET status=:s WHERE id=:oid")
+            ->execute([':s'=>$orderStatus, ':oid'=>$r['order_id']]);
+    }
+}
+
+echo json_encode(['ok'=>true, 'status'=>$status]);

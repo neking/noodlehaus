@@ -34,9 +34,16 @@ $subtotal      = (int)$body['subtotal'];
 $deliveryFee   = (int)$body['delivery_fee'];
 $total         = (int)$body['total'];
 
-foreach (['name','phone','address'] as $f) {
+$deviceId  = sanitizeStr($body['device_id'] ?? '');
+$orderType = in_array(($body['order_type']??''), ['delivery','dine_in']) ? $body['order_type'] : 'delivery';
+$tableId   = strtoupper(sanitizeStr($body['table_id'] ?? ''));
+if ($orderType === 'dine_in' && !$tableId) $orderType = 'delivery';
+$requiredFields = $orderType === 'dine_in' ? ['name'] : ['name','phone','address'];
+foreach ($requiredFields as $f) {
     if (empty(trim($customer[$f] ?? ''))) jsonError("Customer field required: {$f}");
 }
+// Dine-in: delivery_fee = 0
+if ($orderType === 'dine_in') $deliveryFee = 0;
 if (empty($items) || !is_array($items)) jsonError('No items');
 foreach ($items as $i => $item) {
     foreach (['item_id','qty','price'] as $f) {
@@ -44,7 +51,7 @@ foreach ($items as $i => $item) {
     }
 }
 
-$allowed = ['kpay','wavepay','cbpay','ayapay','cod','card'];
+$allowed = ['kpay','wave','wavepay','cb','cbpay','aya','ayapay','cod','card'];
 if (!in_array($paymentMethod, $allowed, true)) jsonError('Invalid payment method');
 
 /* ── DB CONNECT ── */
@@ -68,20 +75,21 @@ try {
     $pdo->beginTransaction();
 
     /* 1. orders */
+    $tableStatus = $orderType === 'dine_in' ? 'open' : null;
     $s = $pdo->prepare("
         INSERT INTO orders
             (customer_name, customer_phone, delivery_address, township, city,
              special_notes, payment_method, subtotal, delivery_fee, total_amount,
-             status, created_at)
+             status, device_id, order_type, table_id, table_status, created_at)
         VALUES
             (:name, :phone, :address, :township, :city,
              :notes, :payment, :subtotal, :delivery_fee, :total,
-             'pending', NOW())
+             'pending', :device_id, :order_type, :table_id, :table_status, NOW())
     ");
     $s->execute([
         ':name'         => sanitizeStr($customer['name']),
         ':phone'        => sanitizeStr($customer['phone']),
-        ':address'      => sanitizeStr($customer['address']),
+        ':address'      => sanitizeStr($customer['address'] ?? ''),
         ':township'     => sanitizeStr($customer['township'] ?? ''),
         ':city'         => sanitizeStr($customer['city']     ?? ''),
         ':notes'        => sanitizeStr($customer['notes']    ?? ''),
@@ -89,6 +97,10 @@ try {
         ':subtotal'     => $subtotal,
         ':delivery_fee' => $deliveryFee,
         ':total'        => $total,
+        ':device_id'    => $deviceId,
+        ':order_type'   => $orderType,
+        ':table_id'     => $tableId ?: null,
+        ':table_status' => $tableStatus,
     ]);
     $orderId = (int)$pdo->lastInsertId();
 

@@ -45,6 +45,10 @@ header{background:var(--panel);border-bottom:1px solid var(--border);padding:.8r
 .ttimer.over{color:var(--red);}
 .tbtns{padding:.6rem 1rem;display:flex;gap:.5rem;border-top:1px solid var(--border);}
 .tbtn{flex:1;padding:.5rem;border:1px solid var(--border);background:none;color:var(--text);border-radius:6px;font-family:'DM Mono',monospace;font-size:.75rem;font-weight:700;cursor:pointer;transition:opacity .15s;text-transform:uppercase;letter-spacing:.05em;}
+    .tbtn-note{padding:.4rem .6rem;border:1px solid #444;background:#333;color:#aaa;border-radius:6px;font-size:.72rem;cursor:pointer;font-family:'DM Mono',monospace;}
+    .tbtn-cancel{padding:.4rem .6rem;border:none;background:#4a1010;color:#f88;border-radius:6px;font-size:.72rem;cursor:pointer;font-family:'DM Mono',monospace;}
+    .tbtn-cancel:hover{background:#6a1515;}
+    .note-row{display:flex;gap:.4rem;margin-top:.4rem;}
 .tbtn:hover{opacity:.7;}
 .tbtn.s{border-color:var(--blue);color:var(--blue);}
 .tbtn.r{border-color:var(--green);color:var(--green);}
@@ -56,6 +60,76 @@ header{background:var(--panel);border-bottom:1px solid var(--border);padding:.8r
 .toast.show{transform:translateY(0);opacity:1;}
 .toast.ok{border-color:var(--green);color:var(--green);}
 .toast.err{border-color:var(--red);color:var(--red);}
+
+/* ── TABLET (≤900px) ── */
+@media(max-width:900px){
+  .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem;padding:1rem;}
+  .sbar{padding:.4rem 1rem;gap:1rem;}
+}
+
+/* ── MOBILE (≤600px) ── */
+@media(max-width:600px){
+  header{padding:.6rem 1rem;}
+  .logo{font-size:1rem;}
+  .clock{font-size:.75rem;}
+  .sse-pill{font-size:.68rem;padding:.2rem .5rem;}
+  .hdr-right{gap:.6rem;}
+
+  .sbar{padding:.35rem .8rem;gap:.8rem;font-size:.72rem;}
+  .sd{width:6px;height:6px;}
+
+  /* Single column grid on mobile */
+  .grid{
+    grid-template-columns:1fr;
+    gap:.7rem;
+    padding:.7rem .8rem;
+  }
+
+  /* Bigger touch targets on ticket buttons */
+  .ticket{border-radius:8px;}
+  .th{padding:.6rem .8rem;}
+  .tid{font-size:.95rem;}
+  .tcust{padding:.35rem .8rem;font-size:.75rem;}
+  .titems{padding:.5rem .8rem;}
+  .titem{font-size:.85rem;padding:.4rem 0;}
+  .qty{width:26px;height:26px;font-size:.8rem;}
+  .tnotes{margin:.3rem .8rem .4rem;font-size:.75rem;}
+  .ttimer{padding:0 .8rem .4rem;font-size:.72rem;}
+
+  .tbtns{padding:.5rem .8rem;gap:.4rem;flex-wrap:wrap;}
+  .tbtn{
+    padding:.55rem .5rem;
+    font-size:.8rem;
+    min-height:44px; /* iOS touch target */
+    flex:1;min-width:80px;
+  }
+  .tbtn-note{
+    padding:.5rem .7rem;
+    font-size:.78rem;
+    min-height:44px;
+  }
+  .tbtn-cancel{
+    padding:.5rem .7rem;
+    font-size:.78rem;
+    min-height:44px;
+  }
+
+  .toast{
+    bottom:1rem;
+    right:.8rem;
+    left:.8rem;
+    max-width:none;
+    text-align:center;
+    font-size:.8rem;
+  }
+}
+
+/* ── SMALL MOBILE (≤380px) ── */
+@media(max-width:380px){
+  .grid{padding:.5rem;}
+  .tbtns{gap:.3rem;}
+  .tbtn{font-size:.72rem;padding:.5rem .3rem;}
+}
 </style>
 </head>
 <body>
@@ -107,7 +181,7 @@ function connect() {
       .filter(o => ['pending','preparing','ready'].includes(o.status))
       .forEach(o => { orders[o.kds_id] = o; maxId = Math.max(maxId, o.kds_id); });
     render();
-    setPill('live', 'Live');
+    setPill('live', 'Live ●');
     retryDelay = 2000;
   });
 
@@ -127,10 +201,13 @@ function connect() {
   });
 
   es.onerror = () => {
-    setPill('fail', 'Reconnecting…');
-    es.close(); es = null;
-    retryDelay = Math.min(retryDelay * 1.5, 10000);
-    setTimeout(connect, retryDelay);
+    // Only reconnect if not already live (ping-only connections fire onerror on close)
+    if (es && es.readyState === EventSource.CLOSED) {
+      setPill('fail', 'Reconnecting…');
+      es = null;
+      retryDelay = Math.min(retryDelay * 1.5, 15000);
+      setTimeout(connect, retryDelay);
+    }
   };
 
   es.onopen = () => {
@@ -173,30 +250,79 @@ function upsertTicket(o) {
 
 /* ── TICKET HTML ── */
 function ticketHTML(o) {
-  const mins = Math.floor((Date.now() - new Date(o.time)) / 60000);
+  const serverTime = o.time ? new Date(o.time.replace(' ','T') + 'Z') : new Date();
+  const mins = Math.floor((Date.now() - serverTime) / 60000);
   const over = mins > 20;
   const items = (o.items || []).map(i =>
     `<div class="titem"><span class="qty">${i.qty}</span><span>${i.name}</span></div>`
   ).join('');
-  let btn = '';
-  if (o.status === 'pending')   btn = `<button class="tbtn s" onclick="doUpdate(${o.kds_id},'preparing')">▶ Start</button>`;
-  if (o.status === 'preparing') btn = `<button class="tbtn r" onclick="doUpdate(${o.kds_id},'ready')">✔ Ready</button>`;
-  if (o.status === 'ready')     btn = `<button class="tbtn d" onclick="doUpdate(${o.kds_id},'served')">↗ Served</button>`;
+
+  // Action buttons
+  let actionBtn = '';
+  if (o.status === 'pending')   actionBtn = `<button class="tbtn s" onclick="doUpdate(${o.kds_id},'preparing')">▶ START</button>`;
+  if (o.status === 'preparing') actionBtn = `<button class="tbtn r" onclick="doUpdate(${o.kds_id},'ready')">✔ READY</button>`;
+  if (o.status === 'ready')     actionBtn = `<button class="tbtn d" onclick="doUpdate(${o.kds_id},'served')">↗ SERVED</button>`;
+
+  // Note input (collapsible)
+  const noteSection = `
+    <div class="note-row" id="note-row-${o.kds_id}" style="display:none">
+      <input id="note-input-${o.kds_id}" placeholder="Add note…"
+        style="flex:1;padding:.3rem .5rem;border-radius:6px;border:1px solid #444;
+               background:#222;color:#fff;font-size:.78rem;font-family:inherit">
+      <button onclick="saveNote(${o.kds_id})"
+        style="background:#555;border:none;color:#fff;border-radius:6px;
+               padding:.3rem .6rem;cursor:pointer;font-size:.75rem">Save</button>
+    </div>`;
+
   return `
     <div class="ticket ${o.status}" id="tk-${o.kds_id}">
       <div class="th">
         <span class="tid">${o.order_ref}</span>
-        <span class="ttime">${new Date(o.time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
+        <span class="ttime">${new Date(o.time.replace(' ','T')+'Z').toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
       </div>
       <div class="tcust">${o.customer}</div>
       <div class="titems">${items}</div>
       ${o.notes ? `<div class="tnotes">📝 ${o.notes}</div>` : ''}
       <div class="ttimer${over?' over':''}" data-time="${o.time}" id="tmr-${o.kds_id}">⏱ ${mins}m ago${over?' — OVERDUE':''}</div>
-      <div class="tbtns">${btn}</div>
+      ${noteSection}
+      <div class="tbtns">
+        ${actionBtn}
+        <button class="tbtn-note" onclick="toggleNote(${o.kds_id})">📝 Note</button>
+        <button class="tbtn-cancel" onclick="cancelOrder(${o.kds_id}, '${o.order_ref}')">✕ Cancel</button>
+      </div>
     </div>`;
 }
 
 /* ── UPDATE STATUS ── */
+function toggleNote(id) {
+  const r = document.getElementById('note-row-'+id);
+  if (r) r.style.display = r.style.display==='none'?'flex':'none';
+}
+
+async function saveNote(id) {
+  const inp = document.getElementById('note-input-'+id);
+  if (!inp || !inp.value.trim()) return;
+  try {
+    await fetch('kds_update.php',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({kds_id:id, note:inp.value.trim()})});
+    inp.value=''; toggleNote(id);
+  } catch(e){}
+}
+
+async function cancelOrder(id, ref) {
+  const reason = prompt('Cancel '+ref+'?\nReason (optional):');
+  if (reason === null) return;
+  try {
+    const r = await fetch('kds_update.php',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({kds_id:id, status:'cancelled', cancel_reason:reason||'Cancelled by kitchen'})});
+    const d = await r.json();
+    if (d.ok) {
+      const tk = document.getElementById('tk-'+id);
+      if (tk) { tk.style.opacity='.3'; setTimeout(()=>tk.remove(),800); }
+    }
+  } catch(e){}
+}
+
 async function doUpdate(kdsId, newStatus) {
   const btn = document.querySelector(`#tk-${kdsId} .tbtn`);
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
@@ -207,7 +333,7 @@ async function doUpdate(kdsId, newStatus) {
       body: JSON.stringify({kds_id: kdsId, status: newStatus})
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.message);
+    if (!data.ok && !data.success) throw new Error(data.msg || data.message || 'Failed');
 
     if (newStatus === 'served') {
       delete orders[kdsId];
@@ -249,7 +375,8 @@ function resetTimerInterval() {
   clearInterval(timerInt);
   timerInt = setInterval(() => {
     document.querySelectorAll('[id^="tmr-"]').forEach(el => {
-      const mins = Math.floor((Date.now() - new Date(el.dataset.time)) / 60000);
+      const serverTime = el.dataset.time ? new Date(el.dataset.time.replace(' ','T') + 'Z') : new Date();
+      const mins = Math.floor((Date.now() - serverTime) / 60000);
       const over = mins > 20;
       el.textContent = `⏱ ${mins}m ago${over?' — OVERDUE':''}`;
       el.classList.toggle('over', over);

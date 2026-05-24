@@ -190,11 +190,11 @@ if (isset($_GET['api'])) { // GET+POST both handled
     if ($_GET['api'] === 'orders') {
         $rows = db()->query("
             SELECT o.id, o.customer_name, o.customer_phone, o.total_amount,
-                   o.payment_method, o.status, o.created_at,
+                   o.payment_method, o.status, o.created_at, o.delete_reason,
                    GROUP_CONCAT(oi.item_name,'×',oi.qty SEPARATOR ', ') AS items
             FROM orders o
             JOIN order_items oi ON oi.order_id = o.id
-            WHERE o.deleted_at IS NULL
+            WHERE o.deleted_at IS NULL OR o.status = 'cancelled'
             GROUP BY o.id ORDER BY o.id DESC LIMIT 100
         ")->fetchAll();
         echo json_encode(['ok'=>true,'orders'=>$rows]);
@@ -518,8 +518,8 @@ if (isset($_GET['api'])) { // GET+POST both handled
     /* dashboard stats */
     if ($_GET['api'] === 'stats') {
         $pdo = db();
-        $today     = $pdo->query("SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE() AND deleted_at IS NULL")->fetchColumn();
-        $revenue   = $pdo->query("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE DATE(created_at)=CURDATE() AND deleted_at IS NULL")->fetchColumn();
+        $today     = $pdo->query("SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE() AND deleted_at IS NULL AND status != 'cancelled'")->fetchColumn();
+        $revenue   = $pdo->query("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE DATE(created_at)=CURDATE() AND deleted_at IS NULL AND status != 'cancelled'")->fetchColumn();
         $lowstock  = $pdo->query("SELECT COUNT(*) FROM menu_items WHERE stock_qty<=5 AND is_active=1")->fetchColumn();
         $pending   = $pdo->query("SELECT COUNT(*) FROM kds_queue WHERE status='pending'")->fetchColumn();
         echo json_encode(['ok'=>true,'today'=>$today,'revenue'=>$revenue,'low'=>$lowstock,'pending'=>$pending]);
@@ -722,31 +722,77 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 }
 
 @media(max-width:600px){
+  /* ── NAV ── */
   .mobile-nav{display:block;}
-  .main{padding-bottom:72px;} /* space for bottom nav */
-  .hamburger{display:none;}   /* bottom nav replaces hamburger on small screens */
-  .sidebar{display:none !important;} /* hide sidebar — use bottom nav instead */
+  .main{padding-bottom:72px;}
+  .hamburger{display:none;}
+  .sidebar{display:none !important;}
   .sidebar-overlay{display:none !important;}
-  .stats-grid{grid-template-columns:1fr 1fr;gap:.6rem;}
-  .stat-card{padding:.8rem;}
-  .stat-val{font-size:1.3rem;}
-  .page-head{
-    padding:.8rem 1rem;
-    flex-wrap:wrap;gap:.5rem;
+
+  /* ── STATS ── */
+  .stats-grid{grid-template-columns:1fr 1fr;gap:.5rem;}
+  .stat-card{padding:.75rem .8rem;}
+  .stat-val{font-size:1.2rem;}
+  .stat-label{font-size:.72rem;}
+
+  /* ── PAGE HEAD ── */
+  .page-head{padding:.75rem 1rem;flex-wrap:wrap;gap:.4rem;min-height:auto;}
+  .page-title{font-size:1rem;}
+
+  /* ── CONTENT ── */
+  .content{padding:.7rem;}
+  .btn{padding:.4rem .65rem;font-size:.75rem;}
+  .btn-sm{padding:.3rem .6rem;font-size:.72rem;}
+
+  /* ── TABLES ── */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:420px;}
+  th,td{padding:.45rem .5rem;font-size:.75rem;white-space:nowrap;}
+  .drag-handle{display:none;}
+  .hide-mobile{display:none;}
+
+  /* ── MODALS (bottom sheet) ── */
+  .modal{
+    border-radius:18px 18px 0 0;
+    max-height:92vh;
+    position:fixed;bottom:0;left:0;right:0;
+    width:100%;max-width:100%;
+    overflow-y:auto;
   }
-  .page-title{font-size:1.1rem;}
-  .content{padding:.8rem;}
-  .btn{padding:.4rem .7rem;font-size:.78rem;}
-  .modal{border-radius:14px 14px 0 0;max-height:95vh;
-         position:fixed;bottom:0;left:0;right:0;width:100%;max-width:100%;}
   .modal-bg{align-items:flex-end;padding:0;}
+  .modal-head{padding:.9rem 1.2rem .7rem;position:sticky;top:0;z-index:1;background:var(--ink);}
+  .modal-body{padding:1rem 1.2rem;}
+  .modal-foot{padding:.8rem 1.2rem;position:sticky;bottom:0;background:var(--card);}
+
+  /* ── FORMS ── */
   .form-grid{grid-template-columns:1fr;}
-  .reason-grid{grid-template-columns:1fr;}
-  th,td{padding:.5rem .6rem;font-size:.78rem;}
-  .drag-handle{display:none;} /* hide drag on mobile — reorder not practical */
+  .full-width{grid-column:1!important;}
+  .reason-grid{grid-template-columns:1fr 1fr;gap:.4rem;}
+  .reason-btn{padding:.45rem .5rem;font-size:.75rem;}
+
+  /* ── MENU ITEMS ── */
+  .cat-tabs{gap:.35rem;flex-wrap:wrap;}
+  .cat-tab{padding:.28rem .65rem;font-size:.73rem;}
   .payment-grid{grid-template-columns:repeat(3,1fr);}
-  .cat-tabs{gap:.4rem;}
-  .cat-tab{padding:.3rem .7rem;font-size:.75rem;}
+  .emoji-cell{width:36px;}
+  .emoji-cell img{width:32px;height:32px;}
+
+  /* ── SETTINGS ── */
+  .form-group label{font-size:.78rem;}
+  input[type=color]{height:36px;}
+  input[type=range]{margin-top:4px;}
+
+  /* ── PREVIEW BOXES ── */
+  #header-preview-box{height:48px;}
+  #hero-preview-box{padding:1rem;}
+  #footer-preview-box{padding:.8rem;}
+
+  /* ── BATCH MODAL ── */
+  #batch-preview-body td{font-size:.72rem;padding:.35rem .5rem;}
+
+  /* ── QR GRID ── */
+  #tables-grid{grid-template-columns:1fr 1fr;}
+  #qr-grid{grid-template-columns:1fr 1fr;}
 }
 
 /* DELETE ORDER MODAL */
@@ -771,6 +817,31 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 .tab-pill.on{background:var(--ink);color:#fff;border-color:var(--ink);}
 .del-badge{background:#fee2e2;color:#991b1b;font-size:.72rem;padding:.15rem .5rem;
   border-radius:4px;font-weight:500;}
+
+/* ── TABLET (768px) ── */
+@media(max-width:768px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .form-grid{grid-template-columns:1fr 1fr;}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}
+
+/* ── SMALL MOBILE (≤380px) ── */
+@media(max-width:380px){
+  .stats-grid{grid-template-columns:1fr 1fr;gap:.4rem;}
+  .stat-card{padding:.6rem .7rem;}
+  .stat-val{font-size:1rem;}
+  .btn{padding:.35rem .55rem;font-size:.72rem;}
+  .btn-sm{padding:.28rem .5rem;font-size:.7rem;}
+  .page-head{padding:.6rem .8rem;}
+  .content{padding:.5rem;}
+  .cat-tab{padding:.25rem .55rem;font-size:.7rem;}
+  th,td{padding:.4rem .4rem;font-size:.72rem;}
+  .mobile-nav-inner button{font-size:.55rem;}
+  .mnav-icon{font-size:1.1rem;}
+  #tables-grid{grid-template-columns:1fr;}
+  #qr-grid{grid-template-columns:1fr 1fr;}
+  .reason-grid{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
@@ -818,6 +889,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('orders')" id="nav-orders">
         <span class="nav-icon">📋</span> Orders
       </div>
+      <div class="nav-item" onclick="showPage('tables')" id="nav-tables">
+        <span class="nav-icon">🍽️</span> Tables
+      </div>
       <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
         <span class="nav-icon">⚙️</span> Settings
       </div>
@@ -840,23 +914,39 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       </div>
       <div class="content">
         <div class="stats-grid" id="stats-grid">
-          <div class="stat-card"><div class="stat-label">Today's Orders</div><div class="stat-val" id="s-orders">—</div></div>
-          <div class="stat-card"><div class="stat-label">Today's Revenue</div><div class="stat-val green" id="s-revenue">—</div></div>
-          <div class="stat-card"><div class="stat-label">Low Stock Items</div><div class="stat-val amber" id="s-low">—</div></div>
-          <div class="stat-card"><div class="stat-label">Pending Orders</div><div class="stat-val red" id="s-pending">—</div></div>
+          <div class="stat-card" onclick="showPage('orders')" style="cursor:pointer">
+            <div class="stat-label">📋 Today's Orders</div>
+            <div class="stat-val" id="s-orders">—</div>
+          </div>
+          <div class="stat-card" onclick="showPage('orders')" style="cursor:pointer">
+            <div class="stat-label">💰 Today's Revenue</div>
+            <div class="stat-val green" id="s-revenue">—</div>
+          </div>
+          <div class="stat-card" onclick="showPage('menu')" style="cursor:pointer">
+            <div class="stat-label">⚠️ Low Stock Items</div>
+            <div class="stat-val" id="s-low">—</div>
+          </div>
+          <div class="stat-card" onclick="filterPending()" style="cursor:pointer">
+            <div class="stat-label">⏳ Pending Orders</div>
+            <div class="stat-val" id="s-pending">—</div>
+          </div>
         </div>
-        <div class="table-wrap">
+
+        <!-- Recent Orders (Dashboard) -->
+        <div class="table-wrap" style="margin-top:1rem">
           <div class="table-toolbar">
-            <strong style="font-size:.9rem">Recent Orders</strong>
-            <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↺ Refresh</button>
+            <span style="font-weight:600;font-size:.9rem">📋 Recent Orders</span>
+            <button class="btn btn-ghost btn-sm" onclick="showPage('orders')">View All →</button>
           </div>
           <div style="overflow-x:auto">
             <table>
               <thead><tr>
-                <th>Order</th><th>Customer</th><th>Items</th>
-                <th>Total</th><th>Payment</th><th>Status</th><th>Time</th>
+                <th>Ref</th><th>Customer</th><th>Items</th>
+                <th>Amount</th><th>Payment</th><th>Status</th><th>Time</th><th></th>
               </tr></thead>
-              <tbody id="dash-orders-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Loading…</td></tr></tbody>
+              <tbody id="dash-orders-body">
+                <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Loading…</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -894,6 +984,55 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
               <tbody id="menu-body"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Loading…</td></tr></tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TABLES PAGE ── -->
+    <div id="page-tables" style="display:none">
+      <div class="page-head">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <button class="hamburger" onclick="openSidebar()">☰</button>
+          <div class="page-title">Tables & QR Codes</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddTableModal()">+ Add Table</button>
+      </div>
+      <div class="content">
+        <!-- Live table status -->
+        <div id="tables-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem"></div>
+
+        <!-- QR section -->
+        <div style="background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:1.2rem">
+          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem">📱 QR Codes — Print & Place on Tables</div>
+          <div id="qr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem"></div>
+          <button class="btn btn-ghost" style="margin-top:1rem;width:100%" onclick="printAllQR()">🖨️ Print All QR Codes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Table Modal -->
+    <div class="modal-bg" id="add-table-modal">
+      <div class="modal" style="max-width:360px">
+        <div class="modal-head"><h3>+ Add Table</h3>
+          <button class="x-btn" onclick="document.getElementById('add-table-modal').classList.remove('open')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Table Code (e.g. T01, VIP1)</label>
+            <input type="text" id="new-table-code" placeholder="T09" style="text-transform:uppercase">
+          </div>
+          <div class="form-group">
+            <label>Label</label>
+            <input type="text" id="new-table-label" placeholder="Window Seat">
+          </div>
+          <div class="form-group">
+            <label>Seats</label>
+            <input type="number" id="new-table-seats" value="4" min="1" max="20">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-ghost" onclick="document.getElementById('add-table-modal').classList.remove('open')">Cancel</button>
+          <button class="btn btn-primary" onclick="saveNewTable()">Save Table</button>
         </div>
       </div>
     </div>
@@ -1234,7 +1373,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <div style="overflow-x:auto">
             <table>
               <thead><tr>
-                <th>Order</th><th>Customer</th><th>Phone</th>
+                <th>Order</th><th>Customer</th><th class="hide-mobile">Phone</th>
                 <th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th></th>
               </tr></thead>
               <tbody id="orders-body"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Loading…</td></tr></tbody>
@@ -1479,6 +1618,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <button class="mnav-btn" id="mnav-orders" onclick="showPage('orders')">
       <span class="mnav-icon">📋</span>Orders
     </button>
+    <button class="mnav-btn" id="mnav-tables" onclick="showPage('tables')">
+      <span class="mnav-icon">🍽️</span>Tables
+    </button>
     <button class="mnav-btn" id="mnav-settings" onclick="showPage('settings')">
       <span class="mnav-icon">⚙️</span>Settings
     </button>
@@ -1544,7 +1686,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','settings'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -1555,6 +1697,7 @@ function showPage(page) {
   if (page==='menu')      { loadMenuItems(); }
   if (page==='orders')    { loadOrders(); }
   if (page==='settings')  { loadSettings(); }
+  if (page==='tables')    { loadTables(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
@@ -1584,6 +1727,15 @@ function closeSidebar() {
 /* ═══════════════════════════════════════
    DASHBOARD
 ═══════════════════════════════════════ */
+async function filterPending() {
+  showPage('orders');
+  setTimeout(() => {
+    document.querySelectorAll('#orders-table tr').forEach(row => {
+      row.style.background = row.textContent.includes('pending') ? '#fff3cd' : '';
+    });
+  }, 600);
+}
+
 async function loadStats() {
   document.getElementById('dash-date').textContent =
     new Date().toLocaleDateString('en-GB', {weekday:'long',day:'numeric',month:'long'});
@@ -1608,11 +1760,14 @@ async function loadOrders() {
     return `<tr>
       <td><strong style="font-family:'DM Mono',monospace">${ref}</strong></td>
       <td>${o.customer_name}</td>
-      ${isDash ? '' : `<td style="font-size:.8rem">${o.customer_phone}</td>`}
+      ${isDash ? '' : `<td class="hide-mobile" style="font-size:.8rem">${o.customer_phone}</td>`}
       <td style="font-size:.78rem;color:var(--muted);max-width:160px">${o.items}</td>
       <td class="price-cell">${fmt(o.total_amount)}</td>
       <td style="text-transform:uppercase;font-size:.78rem">${o.payment_method}</td>
-      <td><span class="order-status os-${o.status}">${o.status}</span></td>
+      <td>
+        <span class="order-status os-${o.status}">${o.status}</span>
+        ${o.status==='cancelled' && o.delete_reason ? `<div style="font-size:.7rem;color:#991b1b;margin-top:.2rem">📝 ${o.delete_reason}</div>` : ''}
+      </td>
       <td style="font-size:.78rem;color:var(--muted);white-space:nowrap">${time}</td>
       <td><button class="btn btn-danger btn-sm" onclick="openDelOrder(${o.id},'${ref}')">🗑</button></td>
     </tr>`;
@@ -2158,6 +2313,131 @@ async function saveOrder(ids) {
     if (d.ok) toast('Order saved ✓','ok');
     else      toast(d.msg||'Save failed','err');
   } catch(e) { toast('Error: '+e.message,'err'); }
+}
+
+/* ═══════════════════════════════════════
+   TABLES & QR CODES
+═══════════════════════════════════════ */
+const BASE_URL = window.location.origin + window.location.pathname.replace('admin.php','');
+
+async function loadTables() {
+  const r = await fetch('table_api.php?action=list');
+  const d = await r.json();
+  if (!d.ok) { toast('Tables load failed','err'); return; }
+  renderTablesGrid(d.tables);
+  renderQRGrid(d.tables);
+}
+
+function renderTablesGrid(tables) {
+  const STATUS_COLOR = { open:'#d1fae5', billed:'#fef3c7', paid:'#f0f0f0' };
+  const STATUS_LABEL = { open:'🟢 Open', billed:'🧾 Bill Requested', paid:'⬜ Empty' };
+  document.getElementById('tables-grid').innerHTML = tables.map(({table:t, order:o}) => {
+    const status = o ? o.table_status : 'paid';
+    const bg     = STATUS_COLOR[status] || '#f0f0f0';
+    return `<div style="background:${bg};border-radius:10px;padding:1rem;border:1px solid rgba(0,0,0,.08)">
+      <div style="font-weight:700;font-size:1rem;margin-bottom:.3rem">${t.table_code}
+        <span style="font-size:.75rem;font-weight:400;color:#666"> ${t.label}</span></div>
+      <div style="font-size:.82rem;margin-bottom:.5rem">${STATUS_LABEL[status]||''}</div>
+      ${o ? `
+        <div style="font-size:.78rem;color:#555;margin-bottom:.6rem">
+          ${o.item_count} items · ${fmt(o.subtotal)}
+        </div>
+        ${o.table_status!=='paid'?`
+        <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:.3rem"
+          onclick="closeTable(${o.id},'${t.table_code}')">✓ Close & Mark Paid</button>
+        `:''}
+      ` : ''}
+      <button class="btn btn-ghost btn-sm" style="width:100%;font-size:.72rem"
+        onclick="resetTable('${t.table_code}')">↺ Reset Table</button>
+    </div>`;
+  }).join('');
+}
+
+function renderQRGrid(tables) {
+  const SITE = BASE_URL + 'index.html';
+  document.getElementById('qr-grid').innerHTML = tables.map(({table:t}) => {
+    const url = `${SITE}?table=${t.table_code}`;
+    // Use QR API (Google Charts or local)
+    const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(url)}`;
+    return `<div style="text-align:center;background:var(--warm);border-radius:10px;padding:1rem;border:1px solid var(--border)">
+      <img src="${qrSrc}" alt="${t.table_code}" style="width:120px;height:120px;border-radius:6px">
+      <div style="font-weight:700;margin-top:.5rem;font-size:.9rem">${t.table_code}</div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:.5rem">${t.label||''} · ${t.seats} seats</div>
+      <a href="${url}" target="_blank" style="font-size:.72rem;color:var(--ink);text-decoration:none;word-break:break-all">${url}</a>
+    </div>`;
+  }).join('');
+}
+
+function printAllQR() {
+  const SITE = BASE_URL + 'index.html';
+  const tables = document.querySelectorAll('#qr-grid > div');
+  const win = window.open('','_blank');
+  win.document.write(`
+    <html><head><title>NoodleHaus QR Codes</title>
+    <style>
+      body{font-family:sans-serif;margin:0;}
+      .page{width:9cm;height:9cm;border:1px solid #ddd;border-radius:12px;
+            display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+            margin:8px;padding:12px;text-align:center;page-break-inside:avoid;}
+      img{width:120px;height:120px;}
+      h2{margin:6px 0 2px;font-size:1.1rem;}
+      p{margin:0;font-size:.65rem;color:#666;word-break:break-all;}
+      @media print{body{margin:0;} .no-print{display:none;}}
+    </style></head><body>
+    <div class="no-print" style="padding:12px">
+      <button onclick="window.print()">🖨️ Print</button>
+    </div>
+    ${Array.from(tables).map(el => {
+      const code = el.querySelector('div[style*="font-weight:700"]')?.textContent?.trim();
+      if (!code) return '';
+      const url  = `${SITE}?table=${code}`;
+      const qr   = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
+      return `<div class="page"><img src="${qr}"><h2>${code}</h2><p>${url}</p></div>`;
+    }).join('')}
+    </body></html>`);
+  win.document.close();
+}
+
+async function closeTable(orderId, code) {
+  if (!confirm(`Table ${code} ကို Close & Paid မှတ်မည်သေချာသလား?`)) return;
+  const r = await fetch('table_api.php?action=close_table', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({order_id: orderId})
+  });
+  const d = await r.json();
+  if (d.ok) { toast(`Table ${code} closed ✓`,'ok'); loadTables(); }
+  else toast(d.msg||'Error','err');
+}
+
+async function resetTable(code) {
+  const r = await fetch('table_api.php?action=open_table', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({table_code: code})
+  });
+  const d = await r.json();
+  if (d.ok) { toast(`Table ${code} reset ✓`,'ok'); loadTables(); }
+  else toast(d.msg||'Error','err');
+}
+
+function openAddTableModal() {
+  document.getElementById('add-table-modal').classList.add('open');
+}
+
+async function saveNewTable() {
+  const code  = document.getElementById('new-table-code').value.trim().toUpperCase();
+  const label = document.getElementById('new-table-label').value.trim();
+  const seats = parseInt(document.getElementById('new-table-seats').value) || 4;
+  if (!code) { toast('Table code လိုသည်','err'); return; }
+  const r = await fetch('table_api.php?action=add_table', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({code, label, seats})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast(`Table ${code} saved ✓`,'ok');
+    document.getElementById('add-table-modal').classList.remove('open');
+    loadTables();
+  } else toast(d.msg||'Error','err');
 }
 
 /* ═══════════════════════════════════════

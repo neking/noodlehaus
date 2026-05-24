@@ -3,8 +3,8 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
-$orderId = (int)($_GET['id'] ?? 0);
-if ($orderId <= 0) { echo json_encode(['success'=>false,'message'=>'Invalid order ID']); exit; }
+$orderId  = (int)($_GET['id'] ?? 0);
+$deviceId = trim($_GET['device_id'] ?? '');
 
 define('DB_HOST','localhost'); define('DB_PORT','3306');
 define('DB_NAME','noodlehaus'); define('DB_USER','root'); define('DB_PASS','');
@@ -17,7 +17,22 @@ try {
     );
 } catch (PDOException $e) { echo json_encode(['success'=>false,'message'=>'DB error']); exit; }
 
-$order = $pdo->prepare("SELECT * FROM orders WHERE id = :id");
+// device_id နဲ့ most recent active order ရှာ
+if ($orderId <= 0 && $deviceId) {
+    $stmt = $pdo->prepare("
+        SELECT id FROM orders
+        WHERE device_id = :did
+          AND deleted_at IS NULL
+          AND status NOT IN ('delivered','cancelled')
+        ORDER BY id DESC LIMIT 1
+    ");
+    $stmt->execute([':did' => $deviceId]);
+    $row = $stmt->fetch();
+    if ($row) $orderId = (int)$row['id'];
+}
+if ($orderId <= 0) { echo json_encode(['success'=>false,'message'=>'No active order']); exit; }
+
+$order = $pdo->prepare("SELECT * FROM orders WHERE id = :id AND (deleted_at IS NULL OR status='cancelled')");
 $order->execute([':id' => $orderId]);
 $o = $order->fetch();
 if (!$o) { echo json_encode(['success'=>false,'message'=>'Order not found']); exit; }
@@ -34,8 +49,9 @@ echo json_encode([
     'order'    => [
         'id'          => 'NH-' . str_pad((string)$o['id'], 6, '0', STR_PAD_LEFT),
         'db_id'       => (int)$o['id'],
-        'status'      => $o['status'],
-        'kds_status'  => $k['status'] ?? 'pending',
+        'status'        => $o['status'],
+        'cancel_reason' => $o['delete_reason'] ?? null,
+        'kds_status'    => $k['status'] ?? 'pending',
         'customer'    => $o['customer_name'],
         'phone'       => $o['customer_phone'],
         'address'     => $o['delivery_address'],
@@ -52,4 +68,4 @@ echo json_encode([
         'ready_at'    => $k['ready_at']   ?? null,
     ],
     'items' => $items->fetchAll(),
-]);
+], JSON_UNESCAPED_UNICODE);
