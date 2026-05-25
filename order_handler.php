@@ -51,7 +51,7 @@ foreach ($items as $i => $item) {
     }
 }
 
-$allowed = ['kpay','wave','wavepay','cb','cbpay','aya','ayapay','cod','card'];
+$allowed = ['kpay','wavepay','cbpay','ayapay','cod','card'];
 if (!in_array($paymentMethod, $allowed, true)) jsonError('Invalid payment method');
 
 /* ── DB CONNECT ── */
@@ -74,35 +74,68 @@ try {
 try {
     $pdo->beginTransaction();
 
-    /* 1. orders */
+    /* 1. orders
+     * Dine-in multi-round: same table + table_status='open' ရှိပြီးသားရင် append။
+     * Delivery / no open table → new order create။
+     */
+    $orderId     = 0;
+    $isAppend    = false;
     $tableStatus = $orderType === 'dine_in' ? 'open' : null;
-    $s = $pdo->prepare("
-        INSERT INTO orders
-            (customer_name, customer_phone, delivery_address, township, city,
-             special_notes, payment_method, subtotal, delivery_fee, total_amount,
-             status, device_id, order_type, table_id, table_status, created_at)
-        VALUES
-            (:name, :phone, :address, :township, :city,
-             :notes, :payment, :subtotal, :delivery_fee, :total,
-             'pending', :device_id, :order_type, :table_id, :table_status, NOW())
-    ");
-    $s->execute([
-        ':name'         => sanitizeStr($customer['name']),
-        ':phone'        => sanitizeStr($customer['phone']),
-        ':address'      => sanitizeStr($customer['address'] ?? ''),
-        ':township'     => sanitizeStr($customer['township'] ?? ''),
-        ':city'         => sanitizeStr($customer['city']     ?? ''),
-        ':notes'        => sanitizeStr($customer['notes']    ?? ''),
-        ':payment'      => $paymentMethod,
-        ':subtotal'     => $subtotal,
-        ':delivery_fee' => $deliveryFee,
-        ':total'        => $total,
-        ':device_id'    => $deviceId,
-        ':order_type'   => $orderType,
-        ':table_id'     => $tableId ?: null,
-        ':table_status' => $tableStatus,
-    ]);
-    $orderId = (int)$pdo->lastInsertId();
+
+    if ($orderType === 'dine_in' && $tableId) {
+        $chk = $pdo->prepare("
+            SELECT id FROM orders
+            WHERE table_id = :tid
+              AND table_status = 'open'
+              AND deleted_at IS NULL
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $chk->execute([':tid' => $tableId]);
+        $existingId = $chk->fetchColumn();
+        if ($existingId) {
+            $orderId  = (int)$existingId;
+            $isAppend = true;
+            // subtotal / total_amount ကို accumulate လုပ်
+            $pdo->prepare("
+                UPDATE orders
+                SET subtotal      = subtotal      + :sub,
+                    total_amount  = total_amount  + :tot,
+                    updated_at    = NOW()
+                WHERE id = :id
+            ")->execute([':sub' => $subtotal, ':tot' => $total, ':id' => $orderId]);
+        }
+    }
+
+    if (!$isAppend) {
+        $s = $pdo->prepare("
+            INSERT INTO orders
+                (customer_name, customer_phone, delivery_address, township, city,
+                 special_notes, payment_method, subtotal, delivery_fee, total_amount,
+                 status, device_id, order_type, table_id, table_status, created_at)
+            VALUES
+                (:name, :phone, :address, :township, :city,
+                 :notes, :payment, :subtotal, :delivery_fee, :total,
+                 'pending', :device_id, :order_type, :table_id, :table_status, NOW())
+        ");
+        $s->execute([
+            ':name'         => sanitizeStr($customer['name']),
+            ':phone'        => sanitizeStr($customer['phone']),
+            ':address'      => sanitizeStr($customer['address'] ?? ''),
+            ':township'     => sanitizeStr($customer['township'] ?? ''),
+            ':city'         => sanitizeStr($customer['city']     ?? ''),
+            ':notes'        => sanitizeStr($customer['notes']    ?? ''),
+            ':payment'      => $paymentMethod,
+            ':subtotal'     => $subtotal,
+            ':delivery_fee' => $deliveryFee,
+            ':total'        => $total,
+            ':device_id'    => $deviceId,
+            ':order_type'   => $orderType,
+            ':table_id'     => $tableId ?: null,
+            ':table_status' => $tableStatus,
+        ]);
+        $orderId = (int)$pdo->lastInsertId();
+    }
 
     /* 2. order_items + stock deduction */
     $itemStmt = $pdo->prepare("
@@ -136,13 +169,86 @@ try {
             ':item_qty'      => $qty,
             ':item_subtotal' => $price * $qty,
         ]);
+        $orderItemId = (int)$pdo->lastInsertId();
+
+        // Get item station
+        $stationRow = $pdo->prepare("SELECT station FROM menu_items WHERE id=:id");
+        $stationRow->execute([':id'=>$itemId]);
+        $itemStation = $stationRow->fetchColumn() ?: 'kitchen';
+
+        // Update order_item station
+        $pdo->prepare("UPDATE order_items SET station=:s WHERE id=:id")
+            ->execute([':s'=>$itemStation, ':id'=>$orderItemId]);
+
+        // Save modifier selections
+        $modifiers = $item['modifiers'] ?? [];
+        if (!empty($modifiers)) {
+            $modStmt = $pdo->prepare("
+                INSERT INTO order_item_modifiers
+                    (order_item_id, group_id, option_id, group_name, label, price_add, free_text)
+                VALUES
+                    (:oiid, :gid, :oid, :gname, :label, :price, :txt)
+            ");
+            $modTotal = 0;
+            foreach ($modifiers as $mod) {
+                $priceAdd = (int)($mod['price_add'] ?? 0);
+                $modTotal += $priceAdd;
+                $modStmt->execute([
+                    ':oiid'  => $orderItemId,
+                    ':gid'   => $mod['group_id'] ?: null,
+                    ':oid'   => $mod['option_id'] ?: null,
+                    ':gname' => sanitizeStr($mod['group_name'] ?? ''),
+                    ':label' => sanitizeStr($mod['label'] ?? ''),
+                    ':price' => $priceAdd,
+                    ':txt'   => $mod['free_text'] ? sanitizeStr($mod['free_text']) : null,
+                ]);
+            }
+            // Update modifier_total on order_item
+            $pdo->prepare("UPDATE order_items SET modifier_total=:m WHERE id=:id")
+                ->execute([':m'=>$modTotal, ':id'=>$orderItemId]);
+        }
     }
 
-    /* 3. kds_queue — KDS ကို ticket ပို့ */
-    $pdo->prepare("
-        INSERT INTO kds_queue (order_id, status, pushed_at)
-        VALUES (:order_id, 'pending', NOW())
-    ")->execute([':order_id' => $orderId]);
+    /* 3. kds_queue — station အလိုက် route
+     * Append mode: station row ရှိပြီးသားရင် INSERT IGNORE (duplicate မဖြစ်အောင်)
+     * Status ကို 'pending' သို့ reset — kitchen မှာ ထပ်မြင်ရမည်
+     */
+    $stationsRes = $pdo->prepare("
+        SELECT DISTINCT station FROM order_items WHERE order_id=:oid
+    ");
+    $stationsRes->execute([':oid'=>$orderId]);
+    $stations = $stationsRes->fetchAll(PDO::FETCH_COLUMN);
+
+    if (empty($stations)) $stations = ['kitchen'];
+
+    foreach ($stations as $st) {
+        if ($isAppend) {
+            // ရှိပြီးသား row → status ကို pending reset (served ဆိုရင်တောင်)
+            $ex = $pdo->prepare("
+                SELECT id FROM kds_queue
+                WHERE order_id=:oid AND station=:st
+                LIMIT 1
+            ");
+            $ex->execute([':oid'=>$orderId, ':st'=>$st]);
+            $kqId = $ex->fetchColumn();
+            if ($kqId) {
+                $pdo->prepare("
+                    UPDATE kds_queue SET status='pending', pushed_at=NOW()
+                    WHERE id=:id
+                ")->execute([':id'=>$kqId]);
+            } else {
+                $pdo->prepare("
+                    INSERT INTO kds_queue (order_id, station, status, pushed_at)
+                    VALUES (:order_id, :station, 'pending', NOW())
+                ")->execute([':order_id'=>$orderId, ':station'=>$st]);
+            }
+        } else {
+            $pdo->prepare("
+                INSERT INTO kds_queue (order_id, station, status, pushed_at)
+                VALUES (:order_id, :station, 'pending', NOW())
+            ")->execute([':order_id'=>$orderId, ':station'=>$st]);
+        }
+    }
 
     $pdo->commit();
 
@@ -160,7 +266,8 @@ echo json_encode([
     'success'            => true,
     'order_id'           => 'NH-' . str_pad((string)$orderId, 6, '0', STR_PAD_LEFT),
     'db_id'              => $orderId,
-    'message'            => 'Order placed successfully',
+    'message'            => $isAppend ? 'Items added to your table order' : 'Order placed successfully',
+    'is_append'          => $isAppend,
     'estimated_minutes'  => 30,
 ]);
 exit;

@@ -137,12 +137,13 @@ if (isset($_GET['api'])) { // GET+POST both handled
     /* update item */
     if ($_GET['api'] === 'update') {
         $b = json_decode(file_get_contents('php://input'), true);
-        $s = db()->prepare("UPDATE menu_items SET name=:n,category=:c,description=:d,price=:p,stock_qty=:s,emoji=:e,is_active=:a WHERE id=:id");
+        $station = in_array($b['station']??'', ['kitchen','counter','bar','all']) ? $b['station'] : 'kitchen';
+        $s = db()->prepare("UPDATE menu_items SET name=:n,category=:c,description=:d,price=:p,stock_qty=:s,emoji=:e,is_active=:a,station=:st WHERE id=:id");
         $s->execute([
             ':n'=>sanitize($b['name']),  ':c'=>sanitize($b['category']),
             ':d'=>sanitize($b['desc']), ':p'=>(int)$b['price'],
             ':s'=>(int)$b['stock'],     ':e'=>sanitize($b['emoji']),
-            ':a'=>(int)$b['active'],    ':id'=>(int)$b['id'],
+            ':a'=>(int)$b['active'],    ':st'=>$station, ':id'=>(int)$b['id'],
         ]);
         echo json_encode(['ok'=>true]);
         exit;
@@ -182,6 +183,105 @@ if (isset($_GET['api'])) { // GET+POST both handled
         foreach ($ids as $order => $id) {
             $stmt->execute([':o' => ($order + 1) * 10, ':id' => (int)$id]);
         }
+        echo json_encode(['ok'=>true]);
+        exit;
+    }
+
+    /* ── MODIFIER APIs ── */
+
+    /* get modifiers for a menu item */
+    if ($_GET['api'] === 'get_modifiers') {
+        $itemId = (int)($_GET['item_id'] ?? 0);
+        if (!$itemId) { echo json_encode(['ok'=>false,'msg'=>'No item_id']); exit; }
+        $groups = db()->prepare("
+            SELECT * FROM modifier_groups WHERE menu_item_id=:id ORDER BY sort_order,id
+        ");
+        $groups->execute([':id'=>$itemId]);
+        $groups = $groups->fetchAll();
+        foreach ($groups as &$g) {
+            $opts = db()->prepare("
+                SELECT * FROM modifier_options WHERE group_id=:gid ORDER BY sort_order,id
+            ");
+            $opts->execute([':gid'=>$g['id']]);
+            $g['options'] = $opts->fetchAll();
+        }
+        echo json_encode(['ok'=>true,'groups'=>$groups]);
+        exit;
+    }
+
+    /* save modifier group (add or update) */
+    if ($_GET['api'] === 'save_modifier_group') {
+        $b = json_decode(file_get_contents('php://input'), true);
+        $itemId   = (int)($b['menu_item_id'] ?? 0);
+        $name     = trim($b['name'] ?? '');
+        $type     = in_array($b['type']??'', ['single','multi','text']) ? $b['type'] : 'single';
+        $required = (int)($b['required'] ?? 0);
+        $sortOrder= (int)($b['sort_order'] ?? 0);
+        $gid      = (int)($b['id'] ?? 0);
+        if (!$itemId || !$name) { echo json_encode(['ok'=>false,'msg'=>'Missing fields']); exit; }
+        if ($gid) {
+            db()->prepare("UPDATE modifier_groups SET name=:n,type=:t,required=:r,sort_order=:s WHERE id=:id AND menu_item_id=:mid")
+                ->execute([':n'=>$name,':t'=>$type,':r'=>$required,':s'=>$sortOrder,':id'=>$gid,':mid'=>$itemId]);
+        } else {
+            $stmt = db()->prepare("INSERT INTO modifier_groups (menu_item_id,name,type,required,sort_order) VALUES (:mid,:n,:t,:r,:s)");
+            $stmt->execute([':mid'=>$itemId,':n'=>$name,':t'=>$type,':r'=>$required,':s'=>$sortOrder]);
+            $gid = (int)db()->lastInsertId();
+        }
+        echo json_encode(['ok'=>true,'id'=>$gid]);
+        exit;
+    }
+
+    /* delete modifier group */
+    if ($_GET['api'] === 'delete_modifier_group') {
+        $b = json_decode(file_get_contents('php://input'), true);
+        $gid = (int)($b['id'] ?? 0);
+        if (!$gid) { echo json_encode(['ok'=>false,'msg'=>'No id']); exit; }
+        db()->prepare("DELETE FROM modifier_groups WHERE id=:id")->execute([':id'=>$gid]);
+        echo json_encode(['ok'=>true]);
+        exit;
+    }
+
+    /* save modifier option (add or update) */
+    if ($_GET['api'] === 'save_modifier_option') {
+        $b = json_decode(file_get_contents('php://input'), true);
+        $gid       = (int)($b['group_id'] ?? 0);
+        $label     = trim($b['label'] ?? '');
+        $priceAdd  = (int)($b['price_add'] ?? 0);
+        $isDefault = (int)($b['is_default'] ?? 0);
+        $sortOrder = (int)($b['sort_order'] ?? 0);
+        $oid       = (int)($b['id'] ?? 0);
+        if (!$gid || !$label) { echo json_encode(['ok'=>false,'msg'=>'Missing fields']); exit; }
+        if ($oid) {
+            db()->prepare("UPDATE modifier_options SET label=:l,price_add=:p,is_default=:d,sort_order=:s WHERE id=:id AND group_id=:gid")
+                ->execute([':l'=>$label,':p'=>$priceAdd,':d'=>$isDefault,':s'=>$sortOrder,':id'=>$oid,':gid'=>$gid]);
+        } else {
+            $stmt = db()->prepare("INSERT INTO modifier_options (group_id,label,price_add,is_default,sort_order) VALUES (:gid,:l,:p,:d,:s)");
+            $stmt->execute([':gid'=>$gid,':l'=>$label,':p'=>$priceAdd,':d'=>$isDefault,':s'=>$sortOrder]);
+            $oid = (int)db()->lastInsertId();
+        }
+        echo json_encode(['ok'=>true,'id'=>$oid]);
+        exit;
+    }
+
+    /* delete modifier option */
+    if ($_GET['api'] === 'delete_modifier_option') {
+        $b = json_decode(file_get_contents('php://input'), true);
+        $oid = (int)($b['id'] ?? 0);
+        if (!$oid) { echo json_encode(['ok'=>false,'msg'=>'No id']); exit; }
+        db()->prepare("DELETE FROM modifier_options WHERE id=:id")->execute([':id'=>$oid]);
+        echo json_encode(['ok'=>true]);
+        exit;
+    }
+
+    /* update menu item station */
+    if ($_GET['api'] === 'update_station') {
+        $b = json_decode(file_get_contents('php://input'), true);
+        $id      = (int)($b['id'] ?? 0);
+        $station = trim($b['station'] ?? 'kitchen');
+        if (!$id) { echo json_encode(['ok'=>false,'msg'=>'No id']); exit; }
+        $allowed = ['kitchen','counter','bar','all'];
+        if (!in_array($station, $allowed)) $station = 'kitchen';
+        db()->prepare("UPDATE menu_items SET station=:s WHERE id=:id")->execute([':s'=>$station,':id'=>$id]);
         echo json_encode(['ok'=>true]);
         exit;
     }
@@ -817,6 +917,11 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 .tab-pill.on{background:var(--ink);color:#fff;border-color:var(--ink);}
 .del-badge{background:#fee2e2;color:#991b1b;font-size:.72rem;padding:.15rem .5rem;
   border-radius:4px;font-weight:500;}
+/* Modifier modal */
+.modifier-group-card{transition:box-shadow .15s;}
+.modifier-group-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);}
+#modifier-groups-list .btn-danger{background:#fee2e2;color:#dc2626;border:none;}
+#modifier-groups-list .btn-danger:hover{background:#fecaca;}
 
 /* ── TABLET (768px) ── */
 @media(max-width:768px){
@@ -1428,6 +1533,15 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
             Show on menu (Active)
           </label>
         </div>
+        <div class="form-group" id="station-row">
+          <label>Kitchen Station</label>
+          <select id="f-station">
+            <option value="kitchen">🍳 Kitchen</option>
+            <option value="counter">🥤 Counter</option>
+            <option value="bar">🍹 Bar</option>
+            <option value="all">📋 All Stations</option>
+          </select>
+        </div>
         <div class="form-group full-width" id="img-upload-row" style="display:none">
           <label>ဓာတ်ပုံ (optional)</label>
           <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
@@ -1447,14 +1561,98 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         </div>
       </div>
     </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <div class="modal-foot" style="justify-content:space-between">
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-ghost" id="modifier-btn" onclick="openModifierModal()" style="display:none">⚙️ Modifiers</button>
+      </div>
       <button class="btn btn-primary" id="modal-save-btn" onclick="saveItem()">Save Item</button>
     </div>
   </div>
 </div>
 
-<!-- ── BATCH UPLOAD MODAL ── -->
+<!-- ── MODIFIER SECTION (shown below item modal when editing) ── -->
+<div class="modal-bg" id="modifier-modal">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-head">
+      <h3>⚙️ Modifiers — <span id="mod-item-name"></span></h3>
+      <button class="x-btn" onclick="closeModifierModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">
+        Modifier group တွေ ထည့်ပြီး customer မှာတဲ့အချိန် ရွေးချယ်နိုင်အောင် လုပ်ပေးပါ။
+      </p>
+      <div id="modifier-groups-list"></div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:.8rem" onclick="openAddGroupForm()">
+        + Add Modifier Group
+      </button>
+
+      <!-- Add/Edit Group Form -->
+      <div id="group-form" style="display:none;margin-top:1rem;padding:1rem;background:var(--surface);border-radius:10px;border:1px solid var(--border)">
+        <input type="hidden" id="gf-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Group Name *</label>
+            <input type="text" id="gf-name" placeholder="e.g. Size, Ice Level">
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="gf-type">
+              <option value="single">Single Select (တစ်ခုပဲရွေး)</option>
+              <option value="multi">Multi Select (တစ်ခုထက်ပိုရွေး)</option>
+              <option value="text">Free Text (မှတ်ချက်)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+              <input type="checkbox" id="gf-required" style="width:16px;height:16px">
+              Required (မဖြစ်မနေ ရွေးရမည်)
+            </label>
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn btn-primary btn-sm" onclick="saveModifierGroup()">Save Group</button>
+          <button class="btn btn-ghost btn-sm" onclick="cancelGroupForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="closeModifierModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── OPTION FORM MODAL ── -->
+<div class="modal-bg" id="option-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <h3 id="opt-modal-title">Add Option</h3>
+      <button class="x-btn" onclick="closeOptionModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="of-id">
+      <input type="hidden" id="of-group-id">
+      <div class="form-group">
+        <label>Option Label *</label>
+        <input type="text" id="of-label" placeholder="e.g. Large, No Ice, Extra Egg">
+      </div>
+      <div class="form-group">
+        <label>Extra Price (ကျပ်) — 0 = free</label>
+        <input type="number" id="of-price" placeholder="0" min="0" value="0">
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+          <input type="checkbox" id="of-default" style="width:16px;height:16px">
+          Default selection
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeOptionModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveModifierOption()">Save</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="batch-modal">
   <div class="modal" style="max-width:720px">
     <div class="modal-head">
@@ -2011,8 +2209,10 @@ function openEditModal(id) {
   document.getElementById('f-price').value    = item.price;
   document.getElementById('f-stock').value    = item.stock_qty;
   document.getElementById('f-active').checked = item.is_active == 1;
+  document.getElementById('f-station').value  = item.station || 'kitchen';
   document.getElementById('active-row').style.display    = '';
   document.getElementById('img-upload-row').style.display = '';
+  document.getElementById('modifier-btn').style.display  = '';
 
   // ဓာတ်ပုံ preview reset
   const cur  = document.getElementById('img-current-preview');
@@ -2037,6 +2237,166 @@ function openEditModal(id) {
 
 function closeModal() {
   document.getElementById('item-modal').classList.remove('open');
+  document.getElementById('modifier-btn').style.display = 'none';
+}
+
+/* ══════════════════════════════════════
+   MODIFIER MODAL JS
+══════════════════════════════════════ */
+let currentModItemId   = null;
+let currentModItemName = '';
+let currentGroupId     = null;
+
+async function openModifierModal() {
+  const id = document.getElementById('f-id').value;
+  const name = document.getElementById('f-name').value;
+  if (!id) return;
+  currentModItemId   = id;
+  currentModItemName = name;
+  document.getElementById('mod-item-name').textContent = name;
+  document.getElementById('modifier-modal').classList.add('open');
+  document.getElementById('group-form').style.display = 'none';
+  await loadModifierGroups();
+}
+
+function closeModifierModal() {
+  document.getElementById('modifier-modal').classList.remove('open');
+}
+
+async function loadModifierGroups() {
+  const r = await fetch(`admin.php?api=get_modifiers&item_id=${currentModItemId}`);
+  const d = await r.json();
+  const el = document.getElementById('modifier-groups-list');
+  if (!d.ok || !d.groups.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:1rem">Modifier မရှိသေးပါ</p>';
+    return;
+  }
+  el.innerHTML = d.groups.map(g => `
+    <div class="modifier-group-card" style="border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-bottom:.8rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div>
+          <strong style="font-size:.9rem">${g.name}</strong>
+          <span style="font-size:.72rem;color:var(--muted);margin-left:.4rem">
+            ${g.type === 'single' ? 'Single' : g.type === 'multi' ? 'Multi' : 'Text'}
+            ${g.required ? ' · <span style="color:var(--danger)">Required</span>' : ''}
+          </span>
+        </div>
+        <div style="display:flex;gap:.3rem">
+          <button class="btn btn-ghost btn-sm" onclick="editGroupForm(${g.id},'${g.name.replace(/'/g,"\\'")}','${g.type}',${g.required})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteModifierGroup(${g.id})">✕</button>
+        </div>
+      </div>
+      ${g.type !== 'text' ? `
+        <div style="margin-left:.5rem">
+          ${g.options.map(o => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:.25rem .4rem;border-radius:6px;background:var(--surface);margin-bottom:.25rem">
+              <span style="font-size:.82rem">
+                ${o.is_default ? '✓ ' : ''}<strong>${o.label}</strong>
+                ${o.price_add > 0 ? `<span style="color:var(--accent2);font-size:.75rem">+${o.price_add.toLocaleString()}ks</span>` : ''}
+              </span>
+              <div style="display:flex;gap:.25rem">
+                <button class="btn btn-ghost btn-sm" style="padding:.15rem .4rem;font-size:.7rem"
+                  onclick="openOptionModal(${g.id},'edit',${o.id},'${o.label.replace(/'/g,"\\'")}',${o.price_add},${o.is_default})">Edit</button>
+                <button class="btn btn-danger btn-sm" style="padding:.15rem .4rem;font-size:.7rem"
+                  onclick="deleteModifierOption(${o.id})">✕</button>
+              </div>
+            </div>
+          `).join('')}
+          <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:.3rem"
+            onclick="openOptionModal(${g.id},'add')">+ Add Option</button>
+        </div>
+      ` : `<p style="font-size:.78rem;color:var(--muted);margin-left:.5rem">Customer မှာ free text ရေးနိုင်မည်</p>`}
+    </div>
+  `).join('');
+}
+
+function openAddGroupForm() {
+  currentGroupId = null;
+  document.getElementById('gf-id').value      = '';
+  document.getElementById('gf-name').value    = '';
+  document.getElementById('gf-type').value    = 'single';
+  document.getElementById('gf-required').checked = false;
+  document.getElementById('group-form').style.display = 'block';
+  document.getElementById('gf-name').focus();
+}
+
+function editGroupForm(id, name, type, required) {
+  currentGroupId = id;
+  document.getElementById('gf-id').value         = id;
+  document.getElementById('gf-name').value       = name;
+  document.getElementById('gf-type').value       = type;
+  document.getElementById('gf-required').checked = !!required;
+  document.getElementById('group-form').style.display = 'block';
+  document.getElementById('gf-name').focus();
+}
+
+function cancelGroupForm() {
+  document.getElementById('group-form').style.display = 'none';
+}
+
+async function saveModifierGroup() {
+  const name     = document.getElementById('gf-name').value.trim();
+  const type     = document.getElementById('gf-type').value;
+  const required = document.getElementById('gf-required').checked ? 1 : 0;
+  const id       = document.getElementById('gf-id').value;
+  if (!name) { toast('Group name ထည့်ပါ', 'err'); return; }
+  const body = { menu_item_id: parseInt(currentModItemId), name, type, required, sort_order: 0 };
+  if (id) body.id = parseInt(id);
+  const r = await fetch('admin.php?api=save_modifier_group', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (d.ok) { toast('Group saved!', 'ok'); cancelGroupForm(); await loadModifierGroups(); }
+  else { toast(d.msg || 'Error', 'err'); }
+}
+
+async function deleteModifierGroup(gid) {
+  if (!confirm('Modifier group ကို ဖျက်မည်။ Options အကုန်ပါ ဖျက်မည်။ သေချာလား?')) return;
+  const d = await (await fetch('admin.php?api=delete_modifier_group', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: gid})
+  })).json();
+  if (d.ok) { toast('Deleted', 'ok'); await loadModifierGroups(); }
+  else { toast(d.msg || 'Error', 'err'); }
+}
+
+function openOptionModal(groupId, mode, id='', label='', priceAdd=0, isDefault=0) {
+  currentGroupId = groupId;
+  document.getElementById('of-group-id').value = groupId;
+  document.getElementById('of-id').value       = id;
+  document.getElementById('of-label').value    = label;
+  document.getElementById('of-price').value    = priceAdd;
+  document.getElementById('of-default').checked= !!isDefault;
+  document.getElementById('opt-modal-title').textContent = mode === 'add' ? 'Add Option' : 'Edit Option';
+  document.getElementById('option-modal').classList.add('open');
+  setTimeout(() => document.getElementById('of-label').focus(), 100);
+}
+
+function closeOptionModal() {
+  document.getElementById('option-modal').classList.remove('open');
+}
+
+async function saveModifierOption() {
+  const label     = document.getElementById('of-label').value.trim();
+  const priceAdd  = parseInt(document.getElementById('of-price').value) || 0;
+  const isDefault = document.getElementById('of-default').checked ? 1 : 0;
+  const groupId   = parseInt(document.getElementById('of-group-id').value);
+  const id        = document.getElementById('of-id').value;
+  if (!label) { toast('Label ထည့်ပါ', 'err'); return; }
+  const body = { group_id: groupId, label, price_add: priceAdd, is_default: isDefault, sort_order: 0 };
+  if (id) body.id = parseInt(id);
+  const d = await (await fetch('admin.php?api=save_modifier_option', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  })).json();
+  if (d.ok) { toast('Saved!', 'ok'); closeOptionModal(); await loadModifierGroups(); }
+  else { toast(d.msg || 'Error', 'err'); }
+}
+
+async function deleteModifierOption(oid) {
+  const d = await (await fetch('admin.php?api=delete_modifier_option', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: oid})
+  })).json();
+  if (d.ok) { toast('Deleted', 'ok'); await loadModifierGroups(); }
+  else { toast(d.msg || 'Error', 'err'); }
 }
 
 async function saveItem() {
@@ -2054,6 +2414,7 @@ async function saveItem() {
     category: document.getElementById('f-cat').value,
     desc:     document.getElementById('f-desc').value.trim(),
     active:   document.getElementById('f-active').checked ? 1 : 0,
+    station:  document.getElementById('f-station').value || 'kitchen',
   };
 
   const btn = document.getElementById('modal-save-btn');

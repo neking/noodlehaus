@@ -134,7 +134,7 @@ header{background:var(--panel);border-bottom:1px solid var(--border);padding:.8r
 </head>
 <body>
 <header>
-  <div class="logo">NoodleHaus KDS</div>
+  <div class="logo">NoodleHaus KDS<span id="station-label" style="font-size:.75rem;margin-left:.6rem;opacity:.6;font-weight:400"></span></div>
   <div class="hdr-right">
     <div class="sse-pill wait" id="pill">
       <span class="dot blink"></span>
@@ -161,6 +161,18 @@ let es     = null;
 let retryDelay = 2000;
 let timerInt   = null;
 
+/* ── STATION (Phase 1C) ── */
+const URL_P        = new URLSearchParams(location.search);
+const STATION      = (URL_P.get('station') || 'all').toLowerCase();
+const STATION_LABEL = {
+  kitchen: '— Kitchen', drinks: '— Drinks', counter: '— Counter',
+  bar: '— Bar', grill: '— Grill', all: ''
+}[STATION] || '';
+document.addEventListener('DOMContentLoaded', () => {
+  const lbl = document.getElementById('station-label');
+  if (lbl && STATION_LABEL) lbl.textContent = STATION_LABEL;
+});
+
 /* ── CLOCK ── */
 setInterval(() => {
   document.getElementById('clk').textContent =
@@ -172,7 +184,8 @@ function connect() {
   setPill('wait', 'Connecting…');
   if (es) { es.close(); es = null; }
 
-  es = new EventSource('kds_stream.php?lastId=' + maxId);
+  const stnQ = STATION !== 'all' ? '&station=' + encodeURIComponent(STATION) : '';
+  es = new EventSource('kds_stream.php?lastId=' + maxId + stnQ);
 
   es.addEventListener('init', e => {
     const list = JSON.parse(e.data);
@@ -183,6 +196,14 @@ function connect() {
     render();
     setPill('live', 'Live ●');
     retryDelay = 2000;
+  });
+
+  es.addEventListener('meta', e => {
+    const m = JSON.parse(e.data);
+    const lbl = document.getElementById('station-label');
+    if (lbl && m.station && m.station !== 'all') {
+      lbl.textContent = '— ' + m.station.charAt(0).toUpperCase() + m.station.slice(1);
+    }
   });
 
   es.addEventListener('new_order', e => {
@@ -280,7 +301,11 @@ function ticketHTML(o) {
         <span class="tid">${o.order_ref}</span>
         <span class="ttime">${new Date(o.time.replace(' ','T')+'Z').toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
       </div>
-      <div class="tcust">${o.customer}</div>
+      <div class="tcust">
+        ${o.customer}
+        ${o.order_type === 'dine_in' && o.table_id ? `<span style="margin-left:.5rem;font-size:.72rem;background:rgba(240,165,0,.2);color:var(--yellow);padding:.1rem .4rem;border-radius:4px;font-weight:600">Table ${o.table_id}</span>` : ''}
+        ${o.station && o.station !== 'kitchen' ? `<span style="margin-left:.3rem;font-size:.68rem;opacity:.5">${o.station}</span>` : ''}
+      </div>
       <div class="titems">${items}</div>
       ${o.notes ? `<div class="tnotes">📝 ${o.notes}</div>` : ''}
       <div class="ttimer${over?' over':''}" data-time="${o.time}" id="tmr-${o.kds_id}">⏱ ${mins}m ago${over?' — OVERDUE':''}</div>

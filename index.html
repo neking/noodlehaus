@@ -532,6 +532,105 @@ header{
   .pay-grid{grid-template-columns:repeat(2,1fr);}
   .pay-opt label{font-size:.65rem;}
 }
+
+/* ── MODIFIER MODAL ── */
+#modifier-item-modal{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(26,18,9,.55);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .25s;
+}
+#modifier-item-modal.open{opacity:1;pointer-events:all;}
+.mod-sheet{
+  background:var(--card);
+  width:100%;max-width:520px;
+  border-radius:22px 22px 0 0;
+  max-height:90vh;display:flex;flex-direction:column;
+  transform:translateY(40px);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+#modifier-item-modal.open .mod-sheet{transform:translateY(0);}
+.mod-sheet-head{
+  padding:1rem 1.2rem .7rem;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:.8rem;
+}
+.mod-sheet-img{
+  width:56px;height:56px;border-radius:10px;
+  object-fit:cover;flex-shrink:0;background:var(--warm);
+  display:flex;align-items:center;justify-content:center;font-size:1.8rem;
+}
+.mod-sheet-title{font-size:1rem;font-weight:700;color:var(--ink);}
+.mod-sheet-base{font-size:.82rem;color:var(--muted);margin-top:.15rem;}
+.mod-sheet-body{flex:1;overflow-y:auto;padding:.8rem 1.2rem;}
+.mod-group{margin-bottom:1.2rem;}
+.mod-group-label{
+  font-size:.78rem;font-weight:700;color:var(--ink);
+  text-transform:uppercase;letter-spacing:.05em;
+  display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;
+}
+.mod-required-badge{
+  background:#fee2e2;color:#dc2626;
+  font-size:.65rem;padding:.1rem .4rem;border-radius:4px;
+  font-weight:600;letter-spacing:0;text-transform:none;
+}
+/* Single / Multi options */
+.mod-options{display:flex;flex-direction:column;gap:.4rem;}
+.mod-opt{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.55rem .8rem;border-radius:10px;
+  border:1.5px solid var(--border);cursor:pointer;
+  transition:all .15s;background:var(--paper);
+}
+.mod-opt:hover{border-color:var(--accent2);background:#fffbf2;}
+.mod-opt.selected{
+  border-color:var(--accent2);background:#fff8e6;
+}
+.mod-opt-left{display:flex;align-items:center;gap:.6rem;}
+.mod-opt-check{
+  width:20px;height:20px;border-radius:50%;
+  border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all .15s;font-size:.7rem;
+}
+.mod-opt.selected .mod-opt-check{
+  background:var(--accent2);border-color:var(--accent2);color:#fff;
+}
+.mod-opt-multi .mod-opt-check{border-radius:4px;}
+.mod-opt-name{font-size:.88rem;color:var(--ink);}
+.mod-opt-price{font-size:.8rem;color:var(--accent2);font-weight:600;}
+/* Free text */
+.mod-textarea{
+  width:100%;padding:.6rem .8rem;border-radius:10px;
+  border:1.5px solid var(--border);font-size:.88rem;
+  font-family:'DM Sans',sans-serif;resize:none;
+  background:var(--paper);color:var(--ink);
+  transition:border-color .15s;
+}
+.mod-textarea:focus{outline:none;border-color:var(--accent2);}
+/* Footer */
+.mod-sheet-foot{
+  padding:.8rem 1.2rem;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:.8rem;
+}
+.mod-total{font-size:.9rem;color:var(--muted);}
+.mod-total strong{color:var(--ink);font-size:1rem;}
+.mod-add-btn{
+  flex:1;max-width:220px;
+  background:var(--ink);color:var(--paper);
+  border:none;border-radius:50px;padding:.65rem 1.2rem;
+  font-size:.9rem;font-weight:700;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:opacity .15s;
+}
+.mod-add-btn:hover{opacity:.85;}
+.mod-add-btn:disabled{opacity:.4;cursor:not-allowed;}
+@media(max-width:600px){
+  .mod-sheet{max-height:88vh;}
+  .mod-sheet-head{padding:.8rem 1rem .6rem;}
+  .mod-sheet-body{padding:.7rem 1rem;}
+  .mod-sheet-foot{padding:.7rem 1rem;}
+}
 </style>
 </head>
 <body>
@@ -556,6 +655,24 @@ header{
   </div>
   <span class="cb-total" id="cb-total">$0</span>
   <button class="cb-checkout" onclick="openDelivery()">Checkout →</button>
+</div>
+
+<!-- ── MODIFIER ITEM MODAL ── -->
+<div id="modifier-item-modal">
+  <div class="mod-sheet">
+    <div class="mod-sheet-head">
+      <div class="mod-sheet-img" id="mod-item-img"></div>
+      <div>
+        <div class="mod-sheet-title" id="mod-item-title"></div>
+        <div class="mod-sheet-base" id="mod-item-base"></div>
+      </div>
+    </div>
+    <div class="mod-sheet-body" id="mod-groups-body"></div>
+    <div class="mod-sheet-foot">
+      <div class="mod-total">Total: <strong id="mod-total-price"></strong></div>
+      <button class="mod-add-btn" id="mod-add-btn" onclick="confirmModifiers()">+ Add to Cart</button>
+    </div>
+  </div>
 </div>
 
 <!-- ORDER TRACKER PILL -->
@@ -810,24 +927,241 @@ function addToCart(id) {
   const item = menu.find(i => i.id === id);
   if (!item) return;
   const stock = parseInt(item.stock_qty ?? item.stock ?? 99);
-  if (cart[id]) {
-    if (cart[id].qty >= stock) { toast('⚠️ Stock limit reached'); return; }
-    cart[id].qty++;
+  if (stock <= 0) return;
+
+  // Check if item has modifiers — fetch from API
+  openModifierModal(item);
+}
+
+/* ═══════════════════════════════════════
+   MODIFIER MODAL
+═══════════════════════════════════════ */
+let _modItem        = null;   // current item
+let _modGroups      = [];     // [{id, name, type, required, options:[]}]
+let _modSelections  = {};     // { groupId: Set(optionIds) or string }
+let _modFetched     = {};     // cache: itemId → groups
+
+async function openModifierModal(item) {
+  _modItem       = item;
+  _modSelections = {};
+
+  // Show modal immediately with loading state
+  document.getElementById('modifier-item-modal').classList.add('open');
+
+  // Set header
+  const imgEl = document.getElementById('mod-item-img');
+  if (item.image_path) {
+    imgEl.innerHTML = `<img src="${item.image_path}" style="width:56px;height:56px;border-radius:10px;object-fit:cover">`;
   } else {
-    cart[id] = { ...item, qty:1 };
+    imgEl.textContent = item.emoji || '🍽️';
+  }
+  document.getElementById('mod-item-title').textContent = item.name;
+  document.getElementById('mod-item-base').textContent  = 'Base price: ' + fmt(item.price);
+  document.getElementById('mod-total-price').textContent = fmt(item.price);
+  document.getElementById('mod-groups-body').innerHTML  =
+    '<p style="text-align:center;padding:2rem;color:var(--muted)">Loading…</p>';
+
+  // Fetch modifiers (with cache)
+  if (!_modFetched[item.id]) {
+    try {
+      const r = await fetch(`modifier_api.php?action=get_modifiers&item_id=${item.id}`);
+      const d = await r.json();
+      _modFetched[item.id] = d.ok ? d.groups : [];
+    } catch(e) {
+      _modFetched[item.id] = [];
+    }
+  }
+  _modGroups = _modFetched[item.id];
+
+  // If no modifiers → skip modal, add directly
+  if (_modGroups.length === 0) {
+    document.getElementById('modifier-item-modal').classList.remove('open');
+    addDirectToCart(item, [], 0, '');
+    return;
+  }
+
+  // Set default selections
+  _modGroups.forEach(g => {
+    if (g.type === 'single') {
+      const def = g.options.find(o => o.is_default);
+      _modSelections[g.id] = new Set(def ? [String(def.id)] : []);
+    } else if (g.type === 'multi') {
+      const defs = g.options.filter(o => o.is_default).map(o => String(o.id));
+      _modSelections[g.id] = new Set(defs);
+    } else {
+      _modSelections[g.id] = '';
+    }
+  });
+
+  renderModGroups();
+  updateModTotal();
+}
+
+function renderModGroups() {
+  const body = document.getElementById('mod-groups-body');
+  body.innerHTML = _modGroups.map(g => {
+    const reqBadge = g.required
+      ? `<span class="mod-required-badge">Required</span>` : '';
+
+    if (g.type === 'text') {
+      return `
+        <div class="mod-group">
+          <div class="mod-group-label">${g.name} ${reqBadge}</div>
+          <textarea class="mod-textarea" rows="2"
+            placeholder="မှတ်ချက် ရေးပါ…"
+            oninput="modTextChange(${g.id}, this.value)"
+          >${_modSelections[g.id] || ''}</textarea>
+        </div>`;
+    }
+
+    const isMulti = g.type === 'multi';
+    const opts = g.options.map(o => {
+      const sel = _modSelections[g.id]?.has(String(o.id));
+      const priceTag = o.price_add > 0
+        ? `<span class="mod-opt-price">+${fmt(o.price_add)}</span>` : '';
+      return `
+        <div class="mod-opt${sel?' selected':''}${isMulti?' mod-opt-multi':''}"
+          onclick="toggleModOpt(${g.id},${o.id},'${g.type}')">
+          <div class="mod-opt-left">
+            <div class="mod-opt-check">${sel ? '✓' : ''}</div>
+            <span class="mod-opt-name">${o.label}</span>
+          </div>
+          ${priceTag}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="mod-group">
+        <div class="mod-group-label">${g.name} ${reqBadge}</div>
+        <div class="mod-options">${opts}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleModOpt(groupId, optionId, type) {
+  const key = String(optionId);
+  if (type === 'single') {
+    _modSelections[groupId] = new Set([key]);
+  } else {
+    if (!_modSelections[groupId]) _modSelections[groupId] = new Set();
+    if (_modSelections[groupId].has(key)) {
+      _modSelections[groupId].delete(key);
+    } else {
+      _modSelections[groupId].add(key);
+    }
+  }
+  renderModGroups();
+  updateModTotal();
+}
+
+function modTextChange(groupId, val) {
+  _modSelections[groupId] = val;
+  updateModTotal();
+}
+
+function updateModTotal() {
+  let extra = 0;
+  _modGroups.forEach(g => {
+    if (g.type === 'text') return;
+    const sel = _modSelections[g.id] || new Set();
+    g.options.forEach(o => {
+      if (sel.has(String(o.id))) extra += parseInt(o.price_add || 0);
+    });
+  });
+  const total = _modItem.price + extra;
+  document.getElementById('mod-total-price').textContent = fmt(total);
+
+  // Validate required groups
+  const allOk = _modGroups.every(g => {
+    if (!g.required) return true;
+    if (g.type === 'text') return (_modSelections[g.id] || '').trim().length > 0;
+    return (_modSelections[g.id]?.size || 0) > 0;
+  });
+  document.getElementById('mod-add-btn').disabled = !allOk;
+}
+
+function closeModifierModal() {
+  document.getElementById('modifier-item-modal').classList.remove('open');
+  _modItem = null;
+}
+
+// Close on backdrop click
+document.getElementById('modifier-item-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModifierModal();
+});
+
+function confirmModifiers() {
+  if (!_modItem) return;
+
+  // Save item reference BEFORE closing modal (closeModifierModal sets _modItem = null)
+  const item = _modItem;
+
+  // Build modifiers array
+  const modifiers = [];
+  let extraPrice = 0;
+  const labelParts = [];
+
+  _modGroups.forEach(g => {
+    if (g.type === 'text') {
+      const txt = (_modSelections[g.id] || '').trim();
+      if (txt) {
+        modifiers.push({ group_id: g.id, option_id: null,
+          group_name: g.name, label: txt, price_add: 0, free_text: txt });
+        labelParts.push(txt);
+      }
+    } else {
+      const sel = _modSelections[g.id] || new Set();
+      sel.forEach(optId => {
+        const opt = g.options.find(o => String(o.id) === optId);
+        if (!opt) return;
+        modifiers.push({ group_id: g.id, option_id: opt.id,
+          group_name: g.name, label: opt.label, price_add: opt.price_add, free_text: null });
+        extraPrice += parseInt(opt.price_add || 0);
+        labelParts.push(opt.label);
+      });
+    }
+  });
+
+  const modLabel = labelParts.join(', ');
+  closeModifierModal();
+  addDirectToCart(item, modifiers, extraPrice, modLabel);
+}
+
+function addDirectToCart(item, modifiers, extraPrice, modLabel) {
+  const stock = parseInt(item.stock_qty ?? item.stock ?? 99);
+  const finalPrice = item.price + extraPrice;
+
+  // Use unique key: itemId + modifier fingerprint
+  const modKey = modifiers.length
+    ? item.id + '_' + modifiers.map(m => m.option_id || m.free_text).join('_')
+    : String(item.id);
+
+  if (cart[modKey]) {
+    if (cart[modKey].qty >= stock) { toast('⚠️ Stock limit reached'); return; }
+    cart[modKey].qty++;
+  } else {
+    cart[modKey] = {
+      ...item,
+      id: item.id,
+      cartKey: modKey,
+      price: finalPrice,
+      basePrice: item.price,
+      modifiers,
+      modLabel,
+      qty: 1,
+    };
   }
   saveCart();
   renderCartUI();
-  toast(`✓ ${item.name} added`);
+  toast(`✓ ${item.name}${modLabel ? ' ('+modLabel+')' : ''} added`);
 }
 
-function changeQty(id, delta) {
-  if (!cart[id]) return;
-  cart[id].qty += delta;
-  if (cart[id].qty <= 0) delete cart[id];
+function changeQty(cartKey, delta) {
+  if (!cart[cartKey]) return;
+  cart[cartKey].qty += delta;
+  if (cart[cartKey].qty <= 0) delete cart[cartKey];
   saveCart();
   renderCartUI();
-  // Re-render modal if open
   if (document.getElementById('cart-step').style.display !== 'none') renderCartStep();
 }
 
@@ -896,12 +1230,13 @@ function renderCartStep() {
       <div class="ci-img">${item.image_path ? `<img src="${item.image_path}">` : (item.emoji||'🍽️')}</div>
       <div class="ci-info">
         <div class="ci-name">${item.name}</div>
+        ${item.modLabel ? `<div class="ci-price" style="color:var(--accent2);font-size:.75rem">${item.modLabel}</div>` : ''}
         <div class="ci-price">${fmt(item.price)} each</div>
       </div>
       <div class="qty-ctrl">
-        <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
+        <button class="qty-btn" onclick="changeQty('${item.cartKey||item.id}',-1)">−</button>
         <span class="qty-num">${item.qty}</span>
-        <button class="qty-btn" onclick="changeQty(${item.id},1)">+</button>
+        <button class="qty-btn" onclick="changeQty('${item.cartKey||item.id}',1)">+</button>
       </div>
       <div class="ci-subtotal">${fmt(item.price*item.qty)}</div>
     </div>`;
@@ -963,7 +1298,8 @@ async function submitOrder() {
     },
     payment_method: document.querySelector('input[name="pay"]:checked')?.value || 'kpay',
     items: Object.values(cart).map(i => ({
-      item_id:i.id, name:i.name, price:i.price, qty:i.qty, subtotal:i.price*i.qty
+      item_id:i.id, name:i.name, price:i.price, qty:i.qty, subtotal:i.price*i.qty,
+      modifiers: i.modifiers || []
     })),
     subtotal:     cartSubtotal(),
     delivery_fee: DINE_IN ? 0 : FEE,
