@@ -1080,7 +1080,49 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 
         
         
-        <!-- Customer History Modal -->
+        
+        <!-- Bulk Delete Modal -->
+        <div id="bulk-delete-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+          <div style="background:var(--bg);border-radius:14px;padding:1.5rem;max-width:380px;width:92%;position:relative">
+            <button onclick="document.getElementById('bulk-delete-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+            <div style="font-weight:600;margin-bottom:1rem">🗑 Bulk Delete Orders</div>
+            <div style="margin-bottom:.75rem">
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:3px">Phone number (ဒီ phone ရဲ့ orders အကုန်ဖျက်)</label>
+              <input type="text" id="bulk-phone" placeholder="09xxxxxxxxx" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem">
+            </div>
+            <div style="margin-bottom:.75rem">
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:3px">Date range ဖျက် (ဗလာ = အကုန်)</label>
+              <div style="display:flex;gap:.5rem">
+                <input type="date" id="bulk-date-from" style="flex:1;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.82rem">
+                <input type="date" id="bulk-date-to" style="flex:1;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.82rem">
+              </div>
+            </div>
+            <div style="margin-bottom:1rem">
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:3px">Delete reason</label>
+              <input type="text" id="bulk-reason" value="Bulk delete by admin" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem">
+            </div>
+            <div id="bulk-preview" style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem"></div>
+            <div style="display:flex;gap:.5rem">
+              <button onclick="previewBulkDelete()" style="flex:1;padding:.6rem;background:#6c757d;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">🔍 Preview</button>
+              <button onclick="confirmBulkDelete()" style="flex:1;padding:.6rem;background:#dc3545;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">🗑 Delete All</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KDS Clear Modal -->
+        <div id="kds-clear-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+          <div style="background:var(--bg);border-radius:14px;padding:1.5rem;max-width:340px;width:92%;position:relative">
+            <button onclick="document.getElementById('kds-clear-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+            <div style="font-weight:600;margin-bottom:1rem">🧹 KDS Queue Clear</div>
+            <div style="margin-bottom:1rem;font-size:.88rem;color:var(--muted)">KDS queue ထဲမှာ pending/preparing/ready tickets တွေကို served အဖြစ် mark လုပ်မည်</div>
+            <div id="kds-pending-count" style="font-size:1.1rem;font-weight:600;margin-bottom:1rem;text-align:center"></div>
+            <div style="display:flex;gap:.5rem">
+              <button onclick="document.getElementById('kds-clear-modal').style.display='none'" style="flex:1;padding:.6rem;background:#6c757d;color:#fff;border:none;border-radius:8px;cursor:pointer">Cancel</button>
+              <button onclick="clearKDSQueue()" style="flex:1;padding:.6rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer">🧹 Clear Now</button>
+            </div>
+          </div>
+        </div>
+<!-- Customer History Modal -->
         <div id="cust-history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center">
           <div style="background:var(--bg);border-radius:16px;padding:1.5rem;max-width:500px;width:95%;max-height:85vh;overflow-y:auto;position:relative">
             <button onclick="document.getElementById('cust-history-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer">✕</button>
@@ -1162,6 +1204,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
             <span style="font-weight:600;font-size:.9rem">📋 Recent Orders</span>
             <button class="btn btn-ghost btn-sm" onclick="showPage('orders')">View All →</button>
             <button class="btn btn-ghost btn-sm" onclick="openDailyReport()">📊 Daily Report</button>
+            <button class="btn btn-ghost btn-sm" onclick="openKDSClear()" style="color:#e84c2b">🧹 KDS</button>
           </div>
           <div style="overflow-x:auto">
             <table>
@@ -1631,6 +1674,31 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
               <button onclick="loadLoyaltyCards()" style="padding:.3rem .7rem;background:#e84c2b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.78rem">🔄 Refresh</button>
             </div>
             <div id="loyalty-cards-list" style="font-size:.82rem;color:var(--muted)">— Load လုပ်ရန် Refresh နှိပ်ပါ —</div>
+
+          <!-- Loyalty Edit Modal -->
+          <div id="loy-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+            <div style="background:var(--bg);border-radius:14px;padding:1.5rem;max-width:340px;width:92%;position:relative">
+              <button onclick="document.getElementById('loy-edit-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+              <div style="font-weight:600;margin-bottom:1rem">✏️ Edit Loyalty Card</div>
+              <input type="hidden" id="loy-edit-phone-orig">
+              <div style="margin-bottom:.6rem">
+                <label style="font-size:.8rem;color:var(--muted)">Phone</label>
+                <input type="text" id="loy-edit-phone" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="margin-bottom:.6rem">
+                <label style="font-size:.8rem;color:var(--muted)">Stamps</label>
+                <input type="number" id="loy-edit-stamps" min="0" max="999" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="margin-bottom:1rem">
+                <label style="font-size:.8rem;color:var(--muted)">Total Redeemed</label>
+                <input type="number" id="loy-edit-redeemed" min="0" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="display:flex;gap:.5rem">
+                <button onclick="saveLoyaltyEdit()" style="flex:1;padding:.6rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">💾 Save</button>
+                <button onclick="deleteLoyaltyCard()" style="padding:.6rem 1rem;background:#dc3545;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">🗑 Delete</button>
+              </div>
+            </div>
+          </div>
           </div>
 
 
@@ -1668,6 +1736,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <button class="btn btn-ghost btn-sm" onclick="showDeletedLog()">📁 Archive</button>
           <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↺</button>
           <button class="btn btn-ghost btn-sm" onclick="openCustHistory()">👤 Customer</button>
+          <button class="btn btn-ghost btn-sm" onclick="openBulkDelete()" style="color:#dc3545">🗑 Bulk</button>
         </div>
       </div>
       <div class="content">
@@ -2196,6 +2265,106 @@ function fmtK(v){v=parseFloat(v);if(v>=1000000)return(v/1000000).toFixed(1)+'M';
 function destroyChart(id){if(_charts[id]){_charts[id].destroy();delete _charts[id];}}
 
 
+
+// ══ LOYALTY CARD EDIT ══
+function openLoyaltyEdit(phone, stamps, redeemed) {
+  document.getElementById('loy-edit-phone-orig').value = phone;
+  document.getElementById('loy-edit-phone').value = phone;
+  document.getElementById('loy-edit-stamps').value = stamps;
+  document.getElementById('loy-edit-redeemed').value = redeemed;
+  document.getElementById('loy-edit-modal').style.display = 'flex';
+}
+
+async function saveLoyaltyEdit() {
+  const origPhone = document.getElementById('loy-edit-phone-orig').value;
+  const phone    = document.getElementById('loy-edit-phone').value.trim();
+  const stamps   = parseInt(document.getElementById('loy-edit-stamps').value) || 0;
+  const redeemed = parseInt(document.getElementById('loy-edit-redeemed').value) || 0;
+  if (!phone) { toast('Phone ထည့်ပါ','err'); return; }
+  const r = await fetch('loyalty_admin.php?action=update', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({orig_phone: origPhone, phone, stamps, total_redeemed: redeemed})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast('✅ Saved');
+    document.getElementById('loy-edit-modal').style.display = 'none';
+    loadLoyaltyCards();
+  } else { toast(d.msg || 'Error','err'); }
+}
+
+async function deleteLoyaltyCard() {
+  const phone = document.getElementById('loy-edit-phone-orig').value;
+  if (!confirm('Loyalty card (' + phone + ') ဖျက်မှာ သေချာပါသလား?')) return;
+  const r = await fetch('loyalty_admin.php?action=delete', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({phone})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast('🗑 Deleted');
+    document.getElementById('loy-edit-modal').style.display = 'none';
+    loadLoyaltyCards();
+  } else { toast(d.msg || 'Error','err'); }
+}
+
+// ══ BULK DELETE ORDERS ══
+function openBulkDelete() {
+  document.getElementById('bulk-preview').innerHTML = '';
+  document.getElementById('bulk-delete-modal').style.display = 'flex';
+}
+
+async function previewBulkDelete() {
+  const phone  = document.getElementById('bulk-phone').value.trim();
+  const from   = document.getElementById('bulk-date-from').value;
+  const to     = document.getElementById('bulk-date-to').value;
+  let url = 'loyalty_admin.php?action=preview_orders';
+  if (phone) url += '&phone=' + encodeURIComponent(phone);
+  if (from)  url += '&from=' + from;
+  if (to)    url += '&to=' + to;
+  const d = await fetch(url).then(r=>r.json());
+  const el = document.getElementById('bulk-preview');
+  if (d.ok) {
+    el.innerHTML = `<div style="background:#fff3cd;border-radius:6px;padding:.5rem .75rem;color:#856404">⚠️ ${d.count} orders found — delete မည်</div>`;
+  } else { el.innerHTML = '<div style="color:red">' + d.msg + '</div>'; }
+}
+
+async function confirmBulkDelete() {
+  const phone  = document.getElementById('bulk-phone').value.trim();
+  const from   = document.getElementById('bulk-date-from').value;
+  const to     = document.getElementById('bulk-date-to').value;
+  const reason = document.getElementById('bulk-reason').value.trim() || 'Bulk delete by admin';
+  if (!confirm('Orders ဖျက်မှာ သေချာပါသလား? ပြန်မရနိုင်ပါ')) return;
+  const r = await fetch('loyalty_admin.php?action=bulk_delete_orders', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({phone, from, to, reason})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast('🗑 ' + d.deleted + ' orders deleted');
+    document.getElementById('bulk-delete-modal').style.display = 'none';
+    loadOrders(); loadStats();
+  } else { toast(d.msg || 'Error','err'); }
+}
+
+// ══ KDS CLEAR ══
+async function openKDSClear() {
+  const d = await fetch('loyalty_admin.php?action=kds_pending').then(r=>r.json());
+  document.getElementById('kds-pending-count').innerHTML =
+    d.ok ? `<span style="color:#e84c2b">${d.count} pending tickets</span>` : 'Error';
+  document.getElementById('kds-clear-modal').style.display = 'flex';
+}
+
+async function clearKDSQueue() {
+  const r = await fetch('loyalty_admin.php?action=kds_clear', {method:'POST'});
+  const d = await r.json();
+  if (d.ok) {
+    toast('🧹 KDS queue cleared (' + d.cleared + ' tickets)');
+    document.getElementById('kds-clear-modal').style.display = 'none';
+    loadStats();
+  } else { toast(d.msg || 'Error','err'); }
+}
+
 async function loadLoyaltyCards() {
   const r = await fetch('loyalty.php?action=admin_list');
   const d = await r.json();
@@ -2209,6 +2378,7 @@ async function loadLoyaltyCards() {
       <td style="text-align:center">⭐ ${c.stamps}</td>
       <td style="text-align:center">🎁 ${c.total_redeemed}</td>
       <td style="text-align:center;color:#999">#${c.last_order_id||'—'}</td>
+      <td><button onclick="openLoyaltyEdit('${c.phone}',${c.stamps},${c.total_redeemed})" style="padding:2px 8px;font-size:.75rem;background:none;border:1px solid #ddd;border-radius:4px;cursor:pointer">✏️</button></td>
     </tr>`).join('') + '</tbody></table>';
 }
 
