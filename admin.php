@@ -2197,6 +2197,12 @@ async function loadLoyaltyCards() {
     </tr>`).join('') + '</tbody></table>';
 }
 
+
+function printReceipt(orderId) {
+  const w = window.open('receipt.php?id=' + orderId, '_blank', 'width=420,height=650,scrollbars=yes');
+  if (!w) alert('Popup blocked — please allow popups for this site');
+}
+
 async function loadAnalytics(days=7){
   [7,14,30].forEach(d=>{
     const b=document.getElementById('abtn-'+d);

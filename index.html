@@ -1784,6 +1784,13 @@ document.addEventListener('change', e => {
 
 
 <script>
+
+function printCustomerReceipt() {
+  if (!orderRef) { alert('Order ID မရသေး'); return; }
+  const w = window.open('receipt.php?id=' + orderRef, '_blank', 'width=420,height=650');
+  if (!w) alert('Popup blocked — please allow popups');
+}
+
 // ══ LOYALTY STAMP CARD ══
 let _loyPhone = '';
 let _loyRequired = 10;
