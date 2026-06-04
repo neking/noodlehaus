@@ -77,19 +77,34 @@ if ($action === 'list') {
     $result = [];
     foreach ($tables as $t) {
         $ord = db()->prepare("
-            SELECT o.id, o.table_status, o.created_at,
+            SELECT o.id, o.table_status, o.created_at, o.total_amount,
                    COUNT(oi.id) AS line_count,
                    SUM(oi.qty) AS item_count,
                    SUM(oi.subtotal) AS subtotal,
-                   GROUP_CONCAT(oi.item_name,'×',oi.qty SEPARATOR ', ') AS items_summary
+                   GROUP_CONCAT(oi.item_name,'x',oi.qty SEPARATOR ', ') AS items_summary
             FROM orders o JOIN order_items oi ON oi.order_id=o.id
-            WHERE o.table_id=:c AND o.order_type='dine_in'
+            WHERE o.table_id COLLATE utf8mb4_unicode_ci=:c AND o.order_type='dine_in'
               AND o.table_status IN ('open','billed') AND o.deleted_at IS NULL
             GROUP BY o.id ORDER BY o.id DESC LIMIT 1
         ");
         $ord->execute([':c'=>$t['table_code']]);
-        $active = $ord->fetch();
-        $result[] = ['table'=>$t, 'order'=>$active?:null];
+        $active = $ord->fetch(PDO::FETCH_ASSOC);
+        // Flat format — merge table + order fields
+        $row = [
+            'id'           => $t['id'],
+            'table_code'   => $t['table_code'],
+            'label'        => $t['label'],
+            'seats'        => $t['seats'],
+            'is_active'    => $t['is_active'],
+            'order_id'     => $active ? $active['id'] : null,
+            'order_status' => $active ? $active['table_status'] : null,
+            'table_status' => $active ? $active['table_status'] : 'empty',
+            'total_amount' => $active ? $active['total_amount'] : 0,
+            'item_count'   => $active ? $active['item_count'] : 0,
+            'subtotal'     => $active ? $active['subtotal'] : 0,
+            'items_summary'=> $active ? $active['items_summary'] : '',
+        ];
+        $result[] = $row;
     }
     jOk(['tables'=>$result]);
 }

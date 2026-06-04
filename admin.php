@@ -2604,6 +2604,13 @@ window.fetch = async function(...args) {
   return res;
 };
 
+
+// ══ LOAD MENU (admin reference) ══
+async function loadMenu() {
+  const d = await fetch('menu_api.php').then(r=>r.json());
+  return d.items || [];
+}
+
 async function loadStats() {
   document.getElementById('dash-date').textContent =
     new Date().toLocaleDateString('en-GB', {weekday:'long',day:'numeric',month:'long'});
