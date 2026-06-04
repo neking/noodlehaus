@@ -1041,6 +1041,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('tables')" id="nav-tables">
         <span class="nav-icon">🍽️</span> Tables
       </div>
+      <div class="nav-item" onclick="showPage('crm')" id="nav-crm">
+        <span class="nav-icon">👥</span> CRM
+      </div>
       <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
         <span class="nav-icon">⚙️</span> Settings
       </div>
@@ -1345,6 +1348,61 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <button class="btn btn-ghost" onclick="document.getElementById('add-table-modal').classList.remove('open')">Cancel</button>
           <button class="btn btn-primary" onclick="saveNewTable()">Save Table</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── CRM PAGE ── -->
+    <div id="page-crm" style="display:none">
+      <div class="page-head">
+        <h1 class="page-title">👥 Customer CRM</h1>
+      </div>
+
+      <!-- Search + Filter Bar -->
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center">
+        <input id="crm-search" type="text" placeholder="🔍 Phone / Name ရှာမည်..."
+          style="flex:1;min-width:200px;padding:.6rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem"
+          oninput="crmSearchDebounce()">
+        <select id="crm-tag-filter" onchange="crmLoadCustomers()"
+          style="padding:.6rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
+          <option value="">All Tags</option>
+          <option value="vip">⭐ VIP</option>
+          <option value="regular">🔄 Regular</option>
+          <option value="normal">👤 Normal</option>
+          <option value="blocked">🚫 Blocked</option>
+        </select>
+        <span id="crm-count" style="color:var(--text-muted);font-size:.85rem"></span>
+      </div>
+
+      <!-- Customer Table -->
+      <div class="card" style="overflow-x:auto;padding:0">
+        <table style="width:100%;border-collapse:collapse;font-size:.88rem">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);background:var(--surface2)">
+              <th style="padding:.75rem 1rem;text-align:left">Customer</th>
+              <th style="padding:.75rem 1rem;text-align:left">Tag</th>
+              <th style="padding:.75rem 1rem;text-align:right">Orders</th>
+              <th style="padding:.75rem 1rem;text-align:right">Total Spent</th>
+              <th style="padding:.75rem 1rem;text-align:left">Last Order</th>
+              <th style="padding:.75rem 1rem;text-align:left">Loyalty</th>
+              <th style="padding:.75rem 1rem;text-align:center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="crm-tbody">
+            <tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div id="crm-pagination" style="display:flex;gap:.5rem;justify-content:center;margin-top:1rem;flex-wrap:wrap"></div>
+    </div>
+
+    <!-- CRM Profile Modal -->
+    <div id="crm-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);overflow-y:auto">
+      <div style="max-width:620px;margin:2rem auto;background:var(--surface);border-radius:16px;padding:2rem;position:relative">
+        <button onclick="document.getElementById('crm-modal').style.display='none'"
+          style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">✕</button>
+        <div id="crm-modal-body">Loading...</div>
       </div>
     </div>
 
@@ -2140,6 +2198,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <button class="mnav-btn" id="mnav-tables" onclick="showPage('tables')">
       <span class="mnav-icon">🍽️</span>Tables
     </button>
+    <button class="mnav-btn" id="mnav-crm" onclick="showPage('crm')">
+      <span class="mnav-icon">👥</span>CRM
+    </button>
     <button class="mnav-btn" id="mnav-settings" onclick="showPage('settings')">
       <span class="mnav-icon">⚙️</span>Settings
     </button>
@@ -2263,7 +2324,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -2275,6 +2336,7 @@ function showPage(page) {
   if (page==='orders')    { loadOrders(); }
   if (page==='settings')  { loadSettings(); }
   if (page==='tables')    { loadTables(); }
+  if (page==='crm')       { crmLoadCustomers(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
@@ -3933,6 +3995,203 @@ async function saveSettings() {
    INIT
 ═══════════════════════════════════════ */
 <?php if ($loggedIn): ?>
+/* ═══════════════════════════════════════
+   CRM
+═══════════════════════════════════════ */
+let crmPage = 1;
+let crmSearchTimer = null;
+
+function crmSearchDebounce() {
+  clearTimeout(crmSearchTimer);
+  crmSearchTimer = setTimeout(() => { crmPage = 1; crmLoadCustomers(); }, 400);
+}
+
+async function crmLoadCustomers(page = null) {
+  if (page) crmPage = page;
+  const search = document.getElementById('crm-search')?.value.trim() || '';
+  const tag    = document.getElementById('crm-tag-filter')?.value || '';
+  const tbody  = document.getElementById('crm-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr>';
+
+  try {
+    const params = new URLSearchParams({ action:'list', page: crmPage, per: 20 });
+    if (search) params.set('search', search);
+    if (tag)    params.set('tag', tag);
+    const r = await fetch('crm_api.php?' + params);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+
+    document.getElementById('crm-count').textContent = `${d.total} customers`;
+    crmRenderTable(d.customers);
+    crmRenderPagination(d.page, d.pages);
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:2rem;text-align:center;color:#e74c3c">${e.message}</td></tr>`;
+  }
+}
+
+function crmRenderTable(customers) {
+  const tbody = document.getElementById('crm-tbody');
+  if (!customers.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">No customers yet</td></tr>';
+    return;
+  }
+  const tagBadge = { vip:'⭐', regular:'🔄', normal:'👤', blocked:'🚫' };
+  const tagColor = { vip:'#f39c12', regular:'#27ae60', normal:'var(--text-muted)', blocked:'#e74c3c' };
+
+  tbody.innerHTML = customers.map(c => `
+    <tr style="border-bottom:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <td style="padding:.75rem 1rem">
+        <div style="font-weight:600">${escHtml(c.name || '—')}</div>
+        <div style="font-size:.8rem;color:var(--text-muted)">${escHtml(c.phone)}</div>
+      </td>
+      <td style="padding:.75rem 1rem">
+        <span style="color:${tagColor[c.tag]};font-size:.85rem">${tagBadge[c.tag]||''} ${c.tag}</span>
+      </td>
+      <td style="padding:.75rem 1rem;text-align:right;font-weight:600">${c.total_orders}</td>
+      <td style="padding:.75rem 1rem;text-align:right">${Number(c.total_spent).toLocaleString()} MMK</td>
+      <td style="padding:.75rem 1rem;font-size:.82rem;color:var(--text-muted)">${c.last_order_at ? c.last_order_at.slice(0,10) : '—'}</td>
+      <td style="padding:.75rem 1rem;font-size:.85rem">
+        ${c.stamps > 0 ? `🎟 ${c.stamps} stamps` : '<span style="color:var(--text-muted)">—</span>'}
+      </td>
+      <td style="padding:.75rem 1rem;text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="crmOpenProfile('${escHtml(c.phone)}')">View</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function crmRenderPagination(current, total) {
+  const el = document.getElementById('crm-pagination');
+  if (total <= 1) { el.innerHTML = ''; return; }
+  let html = '';
+  for (let i = 1; i <= total; i++) {
+    html += `<button class="btn btn-sm ${i===current?'btn-primary':'btn-ghost'}" onclick="crmLoadCustomers(${i})">${i}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+async function crmOpenProfile(phone) {
+  const modal = document.getElementById('crm-modal');
+  const body  = document.getElementById('crm-modal-body');
+  modal.style.display = 'block';
+  body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">Loading...</div>';
+
+  try {
+    const r = await fetch(`crm_api.php?action=profile&phone=${encodeURIComponent(phone)}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+
+    const p   = d.profile || {};
+    const loy = d.loyalty;
+    const tagColor = { vip:'#f39c12', regular:'#27ae60', normal:'var(--text-muted)', blocked:'#e74c3c' };
+    const tagBadge = { vip:'⭐ VIP', regular:'🔄 Regular', normal:'👤 Normal', blocked:'🚫 Blocked' };
+    const tag = p.tag || 'normal';
+
+    body.innerHTML = `
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:1.5rem">
+          ${tag==='vip'?'⭐':'👤'}
+        </div>
+        <div>
+          <div style="font-size:1.2rem;font-weight:700">${escHtml(p.name || phone)}</div>
+          <div style="color:var(--text-muted);font-size:.9rem">${escHtml(phone)}</div>
+        </div>
+        <span style="margin-left:auto;color:${tagColor[tag]};font-weight:600">${tagBadge[tag]}</span>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700">${p.total_orders||0}</div>
+          <div style="font-size:.78rem;color:var(--text-muted)">Total Orders</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.1rem;font-weight:700">${Number(p.total_spent||0).toLocaleString()}</div>
+          <div style="font-size:.78rem;color:var(--text-muted)">MMK Spent</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700">${loy.stamps}</div>
+          <div style="font-size:.78rem;color:var(--text-muted)">Loyalty Stamps</div>
+        </div>
+      </div>
+
+      <!-- Favourites -->
+      ${d.favourites.length ? `
+      <div style="margin-bottom:1.5rem">
+        <div style="font-weight:600;margin-bottom:.6rem">🍜 Favourite Items</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+          ${d.favourites.map(f=>`
+            <span style="background:var(--surface2);border-radius:20px;padding:.3rem .8rem;font-size:.82rem">
+              ${escHtml(f.emoji||'🍽️')} ${escHtml(f.item_name)} <span style="color:var(--text-muted)">×${f.order_count}</span>
+            </span>
+          `).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Recent orders -->
+      ${d.recent_orders.length ? `
+      <div style="margin-bottom:1.5rem">
+        <div style="font-weight:600;margin-bottom:.6rem">📋 Recent Orders</div>
+        ${d.recent_orders.map(o=>`
+          <div style="border-bottom:1px solid var(--border);padding:.6rem 0;font-size:.85rem">
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-weight:600">NH-${String(o.id).padStart(6,'0')}</span>
+              <span>${Number(o.total_amount).toLocaleString()} MMK</span>
+            </div>
+            <div style="color:var(--text-muted);font-size:.8rem;margin-top:.2rem">${escHtml(o.items_summary||'')}</div>
+            <div style="color:var(--text-muted);font-size:.78rem">${(o.created_at||'').slice(0,16)}</div>
+          </div>
+        `).join('')}
+      </div>` : ''}
+
+      <!-- Tag editor -->
+      <div style="background:var(--surface2);border-radius:10px;padding:1rem">
+        <div style="font-weight:600;margin-bottom:.75rem">✏️ Update Tag / Notes</div>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
+          <select id="crm-edit-tag" style="flex:1;min-width:140px;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            <option value="normal"  ${tag==='normal' ?'selected':''}>👤 Normal</option>
+            <option value="regular" ${tag==='regular'?'selected':''}>🔄 Regular</option>
+            <option value="vip"     ${tag==='vip'    ?'selected':''}>⭐ VIP</option>
+            <option value="blocked" ${tag==='blocked'?'selected':''}>🚫 Blocked</option>
+          </select>
+          <input id="crm-edit-notes" type="text" placeholder="Staff notes..."
+            value="${escHtml(p.notes||'')}"
+            style="flex:2;min-width:200px;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <button class="btn btn-primary btn-sm" onclick="crmSaveTag('${escHtml(phone)}')">Save</button>
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    body.innerHTML = `<div style="color:#e74c3c;padding:2rem">${e.message}</div>`;
+  }
+}
+
+async function crmSaveTag(phone) {
+  const tag   = document.getElementById('crm-edit-tag').value;
+  const notes = document.getElementById('crm-edit-notes').value.trim();
+  try {
+    const r = await fetch('crm_api.php?action=update_tag', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone, tag, notes })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    showToast('✅ Updated');
+    document.getElementById('crm-modal').style.display = 'none';
+    crmLoadCustomers();
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+function showToast(msg, isErr=false) {
+  if (typeof toast === 'function') { toast(msg, isErr ? 'err' : 'ok'); }
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 showPage('dashboard');
 <?php endif; ?>
 </script>
