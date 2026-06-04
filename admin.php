@@ -2269,7 +2269,10 @@ async function loadOrders() {
         ${o.status==='cancelled' && o.delete_reason ? `<div style="font-size:.7rem;color:#991b1b;margin-top:.2rem">📝 ${o.delete_reason}</div>` : ''}
       </td>
       <td style="font-size:.78rem;color:var(--muted);white-space:nowrap">${time}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="openDelOrder(${o.id},'${ref}')">🗑</button></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-sm" onclick="printReceipt(${o.id})" title="Print Receipt">🖨️</button>
+        <button class="btn btn-danger btn-sm" onclick="openDelOrder(${o.id},'${ref}')">🗑</button>
+      </td>
     </tr>`;
   };
 
