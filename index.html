@@ -762,17 +762,17 @@ header{
         </div>
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem">🏠 Delivery Details</div>
         <div class="form-row">
-          <div class="form-group"><label>Full Name *</label><input id="f-name" placeholder="Ma Su Su"></div>
-          <div class="form-group"><label>Phone *</label><input id="f-phone" placeholder="09-xxxx-xxxxx"></div>
+          <div class="form-group"><label data-en="Full Name *" data-mm="အမည် *">Full Name *</label><input id="f-name" placeholder="Ma Su Su"></div>
+          <div class="form-group"><label data-en="Phone *" data-mm="ဖုန်းနံပါတ် *">Phone *</label><input id="f-phone" placeholder="09-xxxx-xxxxx"></div>
         </div>
-        <div class="form-group" id="address-row"><label>Address *</label><input id="f-address" placeholder="Street, Township, City"></div>
+        <div class="form-group" id="address-row"><label data-en="Address *" data-mm="လိပ်စာ *">Address *</label><input id="f-address" placeholder="Street, Township, City"></div>
         <div class="form-row" id="township-row">
-          <div class="form-group"><label>Township</label>
+          <div class="form-group"><label data-en="Township" data-mm="မြို့နယ်">Township</label>
             <select id="f-township" onchange="onTownshipChange()">
               <option value="">-- ရွေးပါ --</option>
             </select>
           </div>
-          <div class="form-group"><label>City</label>
+          <div class="form-group"><label data-en="City" data-mm="မြို့">City</label>
             <select id="f-city">
               <option>Yangon</option><option>Mandalay</option>
               <option>Naypyitaw</option><option>Bago</option>
@@ -780,7 +780,7 @@ header{
             </select>
           </div>
         </div>
-        <div class="form-group"><label>Special Instructions</label>
+        <div class="form-group"><label data-en="Special Instructions" data-mm="အထူးမှာကြားချက်">Special Instructions</label>
           <textarea id="f-notes" rows="2" placeholder="No spicy, extra sauce..."></textarea>
         </div>
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:.8rem 0 .5rem">💳 Payment Method</div>
@@ -915,6 +915,7 @@ const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:
   renderCats();
   renderMenu();
   applySettings();
+  applyLang();
   renderCartUI();
   // Restore active orders from localStorage
   try {
@@ -1693,24 +1694,8 @@ function toast(msg) {
 }
 
 /* ── MM/EN Language Toggle ── */
-let currentLang = localStorage.getItem('nh_lang') || 'mm';
+let currentLang = 'en';
 const I18N = {
-  mm: {
-    'Full Name *':        'အမည် *',
-    'Phone *':            'ဖုန်းနံပါတ် *',
-    'Address *':          'လိပ်စာ *',
-    'Township':           'မြို့နယ်',
-    'City':               'မြို့',
-    'Special Instructions': 'အထူးမှာကြားချက်',
-    'PAYMENT METHOD':     'ငွေပေးချေမှု',
-    'Place Order & Pay →':'မှာယူမည် →',
-    'Delivery fee':       'ပို့ဆောင်ခ',
-    'Total':              'စုစုပေါင်း',
-    'Apply':              'ထည့်မည်',
-    'Promo code':         'ပရိုမိုကုဒ်',
-    '-- ရွေးပါ --':      '-- ရွေးပါ --',
-    'DELIVERY DETAILS':   'ပို့ဆောင်ရေး အချက်အလက်',
-  },
   en: {
     'အမည် *':             'Full Name *',
     'ဖုန်းနံပါတ် *':      'Phone *',
@@ -1724,23 +1709,35 @@ const I18N = {
     'စုစုပေါင်း':          'Total',
     'ထည့်မည်':            'Apply',
     'ပရိုမိုကုဒ်':         'Promo code',
-    '-- ရွေးပါ --':       '-- Select --',
     'ပို့ဆောင်ရေး အချက်အလက်': 'DELIVERY DETAILS',
+  },
+  mm: {
+    'Full Name *':        'အမည် *',
+    'Phone *':            'ဖုန်းနံပါတ် *',
+    'Address *':          'လိပ်စာ *',
+    'Township':           'မြို့နယ်',
+    'City':               'မြို့',
+    'Special Instructions': 'အထူးမှာကြားချက်',
+    'PAYMENT METHOD':     'ငွေပေးချေမှု',
+    'Place Order & Pay →':'မှာယူမည် →',
+    'Delivery fee':       'ပို့ဆောင်ခ',
+    'Total':              'စုစုပေါင်း',
+    'Apply':              'ထည့်မည်',
+    'Promo code':         'ပရိုမိုကုဒ်',
+    'DELIVERY DETAILS':   'ပို့ဆောင်ရေး အချက်အလက်',
   }
 };
 function toggleLang() {
   currentLang = currentLang === 'mm' ? 'en' : 'mm';
-  localStorage.setItem('nh_lang', currentLang);
+  // lang state in memory only
   applyLang();
 }
 function applyLang() {
   const btn = document.getElementById('lang-toggle');
-  if (btn) btn.textContent = currentLang === 'mm' ? 'EN' : 'မြန်မာ';
-  const map = currentLang === 'en' ? I18N.en : I18N.mm;
-  document.querySelectorAll('label, button, span.section-title, [data-i18n]').forEach(el => {
-    const orig = el.getAttribute('data-orig') || el.textContent.trim();
-    if (!el.getAttribute('data-orig') && orig) el.setAttribute('data-orig', orig);
-    if (map[orig]) el.textContent = map[orig];
+  if (btn) btn.textContent = currentLang === 'en' ? 'မြန်မာ' : 'EN';
+  const map = currentLang === 'mm' ? I18N.mm : I18N.en;
+  document.querySelectorAll('[data-en][data-mm]').forEach(el => {
+    el.textContent = currentLang === 'mm' ? el.getAttribute('data-mm') : el.getAttribute('data-en');
   });
   // placeholder swap
   const placeholders = {
