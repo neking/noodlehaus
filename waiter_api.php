@@ -158,6 +158,45 @@ if ($action === 'table_order') {
     exit;
 }
 
+
+// ── Add staff ──
+if ($action === 'add_staff' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $d    = json_decode(file_get_contents('php://input'), true) ?? [];
+    $name = trim($d['name'] ?? '');
+    $pin  = trim($d['pin'] ?? '');
+    $role = in_array($d['role']??'', ['waiter','manager']) ? $d['role'] : 'waiter';
+    if (!$name || !$pin) { echo json_encode(['ok'=>false,'msg'=>'Name + PIN required']); exit; }
+    if (!preg_match('/^\d{4,6}$/', $pin)) { echo json_encode(['ok'=>false,'msg'=>'PIN must be 4-6 digits']); exit; }
+    // Check duplicate PIN
+    $exist = $pdo->prepare("SELECT id FROM staff WHERE pin=?");
+    $exist->execute([$pin]);
+    if ($exist->fetch()) { echo json_encode(['ok'=>false,'msg'=>'PIN already in use']); exit; }
+    $pdo->prepare("INSERT INTO staff (name,pin,role,is_active) VALUES (?,?,?,1)")->execute([$name,$pin,$role]);
+    echo json_encode(['ok'=>true]);
+    exit;
+}
+
+// ── Toggle staff active ──
+if ($action === 'toggle_staff' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $d  = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = (int)($d['id'] ?? 0);
+    $active = (int)($d['is_active'] ?? 0);
+    if (!$id) { echo json_encode(['ok'=>false,'msg'=>'No id']); exit; }
+    $pdo->prepare("UPDATE staff SET is_active=? WHERE id=?")->execute([$active, $id]);
+    echo json_encode(['ok'=>true]);
+    exit;
+}
+
+// ── Delete staff ──
+if ($action === 'delete_staff' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $d  = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = (int)($d['id'] ?? 0);
+    if (!$id) { echo json_encode(['ok'=>false,'msg'=>'No id']); exit; }
+    $pdo->prepare("DELETE FROM staff WHERE id=?")->execute([$id]);
+    echo json_encode(['ok'=>true]);
+    exit;
+}
+
 // ── Staff list (for admin) ──
 if ($action === 'staff_list') {
     session_start();

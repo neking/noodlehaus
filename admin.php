@@ -116,7 +116,7 @@ if (isset($_GET['api'])) { // GET+POST both handled
 
     /* get items */
     if ($_GET['api'] === 'items') {
-        $rows = db()->query("SELECT * FROM menu_items ORDER BY sort_order ASC, category, name")->fetchAll();
+        $rows = db()->query("SELECT * FROM menu_items ORDER BY is_active DESC, sort_order ASC, category, name")->fetchAll();
         echo json_encode(['ok'=>true,'items'=>$rows]);
         exit;
     }
@@ -1035,6 +1035,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('orders')" id="nav-orders">
         <span class="nav-icon">📋</span> Orders
       </div>
+      <div class="nav-item" onclick="window.open('kds.html','_blank')" id="nav-kds">
+        <span class="nav-icon">🍳</span> KDS
+      </div>
       <div class="nav-item" onclick="showPage('tables')" id="nav-tables">
         <span class="nav-icon">🍽️</span> Tables
       </div>
@@ -1373,7 +1376,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
               <input type="text" id="st-open_hours" placeholder="Open until 10 PM">
             </div>
             <div class="form-group">
-              <label>Delivery Fee (cents, $1.50 = 150)</label>
+              <label>Delivery Fee (Ks — e.g. 2000)</label>
               <input type="number" id="st-delivery_fee" placeholder="150" min="0">
             </div>
           </div>
@@ -1664,7 +1667,19 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <!-- ═══════════════════════════════════════════════════ -->
           <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem;margin-top:1.5rem">💳 Payment Settings</div>
 
-          <!-- KPay QR Image Upload -->
+          <!-- Staff Management -->
+          <div style="background:var(--warm);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem">
+            <div style="font-weight:600;margin-bottom:.75rem;font-size:.95rem">👥 Staff Management</div>
+            <div id="staff-list-admin" style="margin-bottom:.75rem"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.5rem;margin-bottom:.5rem">
+              <input type="text" id="new-staff-name" placeholder="Name" style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.85rem">
+              <input type="text" id="new-staff-pin" placeholder="PIN (4-6 digits)" maxlength="6" style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.85rem">
+              <button class="btn btn-primary btn-sm" onclick="addStaff()">+ Add</button>
+            </div>
+            <div style="font-size:.78rem;color:var(--muted)">Default PINs: Ko Aung=1234 · Ma Aye=5678 · Manager=0000</div>
+          </div>
+
+<!-- KPay QR Image Upload -->
           <div style="margin-bottom:1rem">
             <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.4rem">KPay QR Code Image</label>
             <div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">Customer checkout မှာ KPay ရွေးရင် ဒီ QR image ပြမည်</div>
@@ -2461,6 +2476,64 @@ async function confirmSplitBill() {
   } else { toast(d.msg || 'Error', 'err'); }
 }
 
+
+// ══ STAFF MANAGEMENT ══
+async function loadStaffList() {
+  const d = await fetch('waiter_api.php?action=staff_list').then(r=>r.json());
+  const el = document.getElementById('staff-list-admin');
+  if (!el) return;
+  if (!d.ok || !d.staff?.length) { el.innerHTML='<div style="color:var(--muted);font-size:.85rem">Staff မရှိသေး</div>'; return; }
+  el.innerHTML = `<table style="width:100%;font-size:.82rem;border-collapse:collapse">
+    <tr style="color:var(--muted);font-size:.75rem"><th style="text-align:left;padding:.25rem 0">Name</th><th>PIN</th><th>Role</th><th>Status</th><th></th></tr>
+    ${d.staff.map(s=>`<tr style="border-top:.5px solid var(--border)">
+      <td style="padding:.35rem 0">${s.name}</td>
+      <td style="text-align:center">${s.pin}</td>
+      <td style="text-align:center">${s.role}</td>
+      <td style="text-align:center"><span style="color:${s.is_active?'#3b6d11':'#a32d2d'}">${s.is_active?'Active':'Inactive'}</span></td>
+      <td style="text-align:right">
+        <button onclick="toggleStaff(${s.id},${s.is_active})" style="font-size:.72rem;padding:2px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:none">${s.is_active?'Deactivate':'Activate'}</button>
+        <button onclick="deleteStaff(${s.id},'${s.name}')" style="font-size:.72rem;padding:2px 8px;border:1px solid #dc3545;border-radius:4px;cursor:pointer;background:none;color:#dc3545;margin-left:4px">Delete</button>
+      </td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+async function addStaff() {
+  const name = document.getElementById('new-staff-name')?.value.trim();
+  const pin  = document.getElementById('new-staff-pin')?.value.trim();
+  if (!name || !pin) { toast('Name + PIN ထည့်ပါ','err'); return; }
+  if (!/^\d{4,6}$/.test(pin)) { toast('PIN 4-6 digits ဖြစ်ရမည်','err'); return; }
+  const r = await fetch('waiter_api.php?action=add_staff',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, pin, role:'waiter'})
+  }).then(r=>r.json());
+  if (r.ok) {
+    toast('✅ '+name+' added');
+    document.getElementById('new-staff-name').value='';
+    document.getElementById('new-staff-pin').value='';
+    loadStaffList();
+  } else { toast(r.msg||'Error','err'); }
+}
+
+async function toggleStaff(id, isActive) {
+  const r = await fetch('waiter_api.php?action=toggle_staff',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({id, is_active: isActive ? 0 : 1})
+  }).then(r=>r.json());
+  if (r.ok) { toast('✅ Staff updated'); loadStaffList(); }
+  else { toast(r.msg||'Error','err'); }
+}
+
+async function deleteStaff(id, name) {
+  if (!confirm(name+' ကို delete မှာ သေချာလား?')) return;
+  const r = await fetch('waiter_api.php?action=delete_staff',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({id})
+  }).then(r=>r.json());
+  if (r.ok) { toast('🗑 Deleted'); loadStaffList(); }
+  else { toast(r.msg||'Error','err'); }
+}
+
 async function loadLoyaltyCards() {
   const r = await fetch('loyalty.php?action=admin_list');
   const d = await r.json();
@@ -2542,6 +2615,11 @@ async function loadCustHistory() {
 }
 
 async function loadAnalytics(days=7){
+  // Empty state helper
+  const setEmpty = (id, msg='No data yet') => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.85rem">📊 ${msg}</div>`;
+  };
   [7,14,30].forEach(d=>{
     const b=document.getElementById('abtn-'+d);
     if(b){b.style.background=d===days?'var(--accent)':'';b.style.color=d===days?'#fff':'';}
@@ -3370,22 +3448,23 @@ async function loadTables() {
 }
 
 function renderTablesGrid(tables) {
-  const STATUS_COLOR = { open:'#d1fae5', billed:'#fef3c7', paid:'#f0f0f0' };
-  const STATUS_LABEL = { open:'🟢 Open', billed:'🧾 Bill Requested', paid:'⬜ Empty' };
-  document.getElementById('tables-grid').innerHTML = tables.map(({table:t, order:o}) => {
-    const status = o ? o.table_status : 'paid';
-    const bg     = STATUS_COLOR[status] || '#f0f0f0';
+  const STATUS_COLOR = { open:'#d1fae5', billed:'#fef3c7', empty:'#f0f0f0' };
+  const STATUS_LABEL = { open:'🟢 Open', billed:'🧾 Bill Requested', empty:'⬜ Empty' };
+  document.getElementById('tables-grid').innerHTML = tables.map(t => {
+    const hasOrder = !!t.order_id;
+    const status = t.table_status || 'empty';
+    const bg = STATUS_COLOR[status] || '#f0f0f0';
     return `<div style="background:${bg};border-radius:10px;padding:1rem;border:1px solid rgba(0,0,0,.08)">
       <div style="font-weight:700;font-size:1rem;margin-bottom:.3rem">${t.table_code}
         <span style="font-size:.75rem;font-weight:400;color:#666"> ${t.label}</span></div>
-      <div style="font-size:.82rem;margin-bottom:.5rem">${STATUS_LABEL[status]||''}</div>
-      ${o ? `
+      <div style="font-size:.82rem;margin-bottom:.5rem">${STATUS_LABEL[status]||status}</div>
+      ${hasOrder ? `
         <div style="font-size:.78rem;color:#555;margin-bottom:.6rem">
-          ${o.item_count} items · ${fmt(o.subtotal)}
+          ${t.item_count||0} items · ${fmt(t.subtotal||0)}
         </div>
-        ${o.table_status!=='paid'?`
+        ${status!=='empty'?`
         <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:.3rem"
-          onclick="openSplitBill(${o.id},${o.total_amount})">💳 Split & Close</button>
+          onclick="openSplitBill(${t.order_id},${t.total_amount||0})">💳 Split & Close</button>
         `:''}
       ` : ''}
       <button class="btn btn-ghost btn-sm" style="width:100%;font-size:.72rem"
@@ -3396,7 +3475,7 @@ function renderTablesGrid(tables) {
 
 function renderQRGrid(tables) {
   const SITE = BASE_URL + 'index.html';
-  document.getElementById('qr-grid').innerHTML = tables.map(({table:t}) => {
+  document.getElementById('qr-grid').innerHTML = tables.map(t => {
     const url = `${SITE}?table=${t.table_code}`;
     // Use QR API (Google Charts or local)
     const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(url)}`;
