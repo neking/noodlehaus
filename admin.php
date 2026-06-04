@@ -1044,6 +1044,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('crm')" id="nav-crm">
         <span class="nav-icon">👥</span> CRM
       </div>
+      <div class="nav-item" onclick="showPage('shift')" id="nav-shift">
+        <span class="nav-icon">🕐</span> Shifts
+      </div>
       <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
         <span class="nav-icon">⚙️</span> Settings
       </div>
@@ -1348,6 +1351,92 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <button class="btn btn-ghost" onclick="document.getElementById('add-table-modal').classList.remove('open')">Cancel</button>
           <button class="btn btn-primary" onclick="saveNewTable()">Save Table</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── SHIFT PAGE ── -->
+    <div id="page-shift" style="display:none">
+      <div class="page-head">
+        <h1 class="page-title">🕐 Shift Management</h1>
+      </div>
+
+      <!-- Current Shift Status Card -->
+      <div id="shift-status-card" class="card" style="margin-bottom:1.5rem;padding:1.5rem">
+        <div id="shift-status-body">
+          <div style="text-align:center;color:var(--text-muted);padding:1rem">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Open Shift Form (shown when no shift open) -->
+      <div id="shift-open-form" class="card" style="display:none;padding:1.5rem;margin-bottom:1.5rem">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:1rem">🔓 Shift ဖွင့်မည်</div>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:150px">
+            <label style="font-size:.82rem;color:var(--text-muted);display:block;margin-bottom:.3rem">Staff PIN</label>
+            <input id="shift-pin" type="password" maxlength="6" placeholder="••••"
+              style="width:100%;padding:.6rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:1rem;letter-spacing:.3em">
+          </div>
+          <div style="flex:1;min-width:180px">
+            <label style="font-size:.82rem;color:var(--text-muted);display:block;margin-bottom:.3rem">Opening Cash (MMK)</label>
+            <input id="shift-opening-cash" type="number" min="0" placeholder="50000"
+              style="width:100%;padding:.6rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          </div>
+          <button class="btn btn-primary" onclick="shiftOpen()" style="padding:.6rem 1.5rem">
+            ▶ Open Shift
+          </button>
+        </div>
+      </div>
+
+      <!-- Close Shift Form (shown when shift open) -->
+      <div id="shift-close-form" class="card" style="display:none;padding:1.5rem;margin-bottom:1.5rem">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:1rem">🔒 Shift ပိတ်မည်</div>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:180px">
+            <label style="font-size:.82rem;color:var(--text-muted);display:block;margin-bottom:.3rem">Closing Cash (MMK)</label>
+            <input id="shift-closing-cash" type="number" min="0" placeholder="0"
+              style="width:100%;padding:.6rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          </div>
+          <div style="flex:2;min-width:200px">
+            <label style="font-size:.82rem;color:var(--text-muted);display:block;margin-bottom:.3rem">Notes</label>
+            <input id="shift-close-notes" type="text" placeholder="Optional notes..."
+              style="width:100%;padding:.6rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          </div>
+          <button class="btn" onclick="shiftClose()"
+            style="padding:.6rem 1.5rem;background:#e74c3c;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">
+            ■ Close Shift
+          </button>
+        </div>
+      </div>
+
+      <!-- Shift History -->
+      <div class="card" style="padding:0;overflow-x:auto">
+        <div style="padding:1rem 1.2rem;font-weight:700;border-bottom:1px solid var(--border)">📋 Shift History</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.87rem">
+          <thead>
+            <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+              <th style="padding:.7rem 1rem;text-align:left">Staff</th>
+              <th style="padding:.7rem 1rem;text-align:left">Opened</th>
+              <th style="padding:.7rem 1rem;text-align:left">Duration</th>
+              <th style="padding:.7rem 1rem;text-align:right">Orders</th>
+              <th style="padding:.7rem 1rem;text-align:right">Revenue</th>
+              <th style="padding:.7rem 1rem;text-align:right">Cash Diff</th>
+              <th style="padding:.7rem 1rem;text-align:center">Status</th>
+              <th style="padding:.7rem 1rem;text-align:center">Detail</th>
+            </tr>
+          </thead>
+          <tbody id="shift-history-tbody">
+            <tr><td colspan="8" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Shift Detail Modal -->
+    <div id="shift-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);overflow-y:auto">
+      <div style="max-width:680px;margin:2rem auto;background:var(--surface);border-radius:16px;padding:2rem;position:relative">
+        <button onclick="document.getElementById('shift-modal').style.display='none'"
+          style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">✕</button>
+        <div id="shift-modal-body">Loading...</div>
       </div>
     </div>
 
@@ -2201,6 +2290,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <button class="mnav-btn" id="mnav-crm" onclick="showPage('crm')">
       <span class="mnav-icon">👥</span>CRM
     </button>
+    <button class="mnav-btn" id="mnav-shift" onclick="showPage('shift')">
+      <span class="mnav-icon">🕐</span>Shifts
+    </button>
     <button class="mnav-btn" id="mnav-settings" onclick="showPage('settings')">
       <span class="mnav-icon">⚙️</span>Settings
     </button>
@@ -2324,7 +2416,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -2337,6 +2429,7 @@ function showPage(page) {
   if (page==='settings')  { loadSettings(); }
   if (page==='tables')    { loadTables(); }
   if (page==='crm')       { crmLoadCustomers(); }
+  if (page==='shift')      { shiftLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
@@ -4182,6 +4275,225 @@ async function crmSaveTag(phone) {
     document.getElementById('crm-modal').style.display = 'none';
     crmLoadCustomers();
   } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+/* ═══════════════════════════════════════
+   SHIFT MANAGEMENT
+═══════════════════════════════════════ */
+let _currentShiftId = null;
+
+async function shiftLoad() {
+  await shiftLoadStatus();
+  await shiftLoadHistory();
+}
+
+async function shiftLoadStatus() {
+  const body = document.getElementById('shift-status-body');
+  try {
+    const r = await fetch('shift_api.php?action=current');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+
+    if (!d.is_open) {
+      _currentShiftId = null;
+      document.getElementById('shift-open-form').style.display  = '';
+      document.getElementById('shift-close-form').style.display = 'none';
+      body.innerHTML = `
+        <div style="text-align:center;padding:1.5rem">
+          <div style="font-size:2rem;margin-bottom:.5rem">🔴</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--text-muted)">No Active Shift</div>
+          <div style="font-size:.85rem;color:var(--text-muted);margin-top:.3rem">Open a shift to start tracking orders</div>
+        </div>`;
+      return;
+    }
+
+    _currentShiftId = d.shift.id;
+    document.getElementById('shift-open-form').style.display  = 'none';
+    document.getElementById('shift-close-form').style.display = '';
+
+    const s   = d.stats;
+    const sh  = d.shift;
+    const dur = shiftDuration(sh.opened_at);
+
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap">
+        <div style="width:48px;height:48px;border-radius:50%;background:#27ae60;display:flex;align-items:center;justify-content:center;font-size:1.3rem">🟢</div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:700">Shift #${sh.id} — ${escHtml(sh.staff_name)}</div>
+          <div style="color:var(--text-muted);font-size:.85rem">Opened ${sh.opened_at.slice(0,16)} · ${dur}</div>
+        </div>
+        <div style="margin-left:auto;font-size:.85rem;color:var(--text-muted)">
+          Opening cash: <strong>${Number(sh.opening_cash).toLocaleString()} MMK</strong>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem">
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.5rem;font-weight:700">${s.total_orders}</div>
+          <div style="font-size:.76rem;color:var(--text-muted)">Orders</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.1rem;font-weight:700">${Number(s.total_revenue).toLocaleString()}</div>
+          <div style="font-size:.76rem;color:var(--text-muted)">Total MMK</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.1rem;font-weight:700">${Number(s.cash_revenue).toLocaleString()}</div>
+          <div style="font-size:.76rem;color:var(--text-muted)">Cash</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;text-align:center">
+          <div style="font-size:1.1rem;font-weight:700">${Number(s.digital_revenue).toLocaleString()}</div>
+          <div style="font-size:.76rem;color:var(--text-muted)">Digital</div>
+        </div>
+      </div>`;
+  } catch(e) {
+    body.innerHTML = `<div style="color:#e74c3c;padding:1rem">${e.message}</div>`;
+  }
+}
+
+async function shiftLoadHistory() {
+  const tbody = document.getElementById('shift-history-tbody');
+  try {
+    const r = await fetch('shift_api.php?action=history&per=20');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    if (!d.shifts.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="padding:2rem;text-align:center;color:var(--text-muted)">No shifts yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.shifts.map(s => {
+      const dur   = s.duration_min ? shiftFmtDur(s.duration_min) : '—';
+      const diff  = s.cash_difference !== null
+        ? `<span style="color:${s.cash_difference>=0?'#27ae60':'#e74c3c'}">${s.cash_difference>=0?'+':''}${Number(s.cash_difference).toLocaleString()}</span>`
+        : '—';
+      const badge = s.status==='open'
+        ? '<span style="background:#27ae60;color:#fff;padding:.2rem .6rem;border-radius:20px;font-size:.75rem">🟢 Open</span>'
+        : '<span style="background:var(--surface2);color:var(--text-muted);padding:.2rem .6rem;border-radius:20px;font-size:.75rem">Closed</span>';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:.7rem 1rem;font-weight:600">${escHtml(s.staff_name)}</td>
+        <td style="padding:.7rem 1rem;font-size:.82rem">${s.opened_at.slice(0,16)}</td>
+        <td style="padding:.7rem 1rem;font-size:.82rem">${dur}</td>
+        <td style="padding:.7rem 1rem;text-align:right">${s.total_orders}</td>
+        <td style="padding:.7rem 1rem;text-align:right">${Number(s.total_revenue).toLocaleString()}</td>
+        <td style="padding:.7rem 1rem;text-align:right">${diff}</td>
+        <td style="padding:.7rem 1rem;text-align:center">${badge}</td>
+        <td style="padding:.7rem 1rem;text-align:center">
+          <button class="btn btn-ghost btn-sm" onclick="shiftDetail(${s.id})">View</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="padding:2rem;text-align:center;color:#e74c3c">${e.message}</td></tr>`;
+  }
+}
+
+async function shiftOpen() {
+  const pin  = document.getElementById('shift-pin').value.trim();
+  const cash = parseInt(document.getElementById('shift-opening-cash').value) || 0;
+  if (!pin) { toast('PIN ထည့်ပါ','err'); return; }
+  try {
+    const r = await fetch('shift_api.php?action=open', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({pin, opening_cash: cash})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    document.getElementById('shift-pin').value = '';
+    document.getElementById('shift-opening-cash').value = '';
+    toast(`✅ Shift opened — ${d.staff_name}`);
+    shiftLoad();
+  } catch(e) { toast('❌ '+e.message,'err'); }
+}
+
+async function shiftClose() {
+  if (!_currentShiftId) { toast('No open shift','err'); return; }
+  const cash  = parseInt(document.getElementById('shift-closing-cash').value) || 0;
+  const notes = document.getElementById('shift-close-notes').value.trim();
+  if (!confirm('Shift ပိတ်မည် — သေချာပါသလား?')) return;
+  try {
+    const r = await fetch('shift_api.php?action=close', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({shift_id: _currentShiftId, closing_cash: cash, notes})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    const diff = d.cash_diff;
+    toast(`✅ Shift closed · Cash diff: ${diff>=0?'+':''}${Number(diff).toLocaleString()} MMK`);
+    document.getElementById('shift-closing-cash').value = '';
+    document.getElementById('shift-close-notes').value  = '';
+    shiftLoad();
+  } catch(e) { toast('❌ '+e.message,'err'); }
+}
+
+async function shiftDetail(id) {
+  const modal = document.getElementById('shift-modal');
+  const body  = document.getElementById('shift-modal-body');
+  modal.style.display = 'block';
+  body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">Loading...</div>';
+  try {
+    const r = await fetch(`shift_api.php?action=detail&shift_id=${id}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    const sh = d.shift;
+    const s  = d.stats;
+    const diff = sh.cash_difference !== null
+      ? `<span style="color:${sh.cash_difference>=0?'#27ae60':'#e74c3c'};font-weight:700">${sh.cash_difference>=0?'+':''}${Number(sh.cash_difference).toLocaleString()} MMK</span>`
+      : '—';
+    body.innerHTML = `
+      <div style="font-size:1.2rem;font-weight:700;margin-bottom:1.2rem">
+        Shift #${sh.id} — ${escHtml(sh.staff_name)}
+        <span style="font-size:.85rem;font-weight:400;color:var(--text-muted);margin-left:.5rem">${sh.status}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1.2rem">
+        <div style="background:var(--surface2);border-radius:8px;padding:.8rem">
+          <div style="font-size:.76rem;color:var(--text-muted)">Opened</div>
+          <div style="font-weight:600">${sh.opened_at.slice(0,16)}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:.8rem">
+          <div style="font-size:.76rem;color:var(--text-muted)">Closed</div>
+          <div style="font-weight:600">${sh.closed_at ? sh.closed_at.slice(0,16) : '—'}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:.8rem">
+          <div style="font-size:.76rem;color:var(--text-muted)">Opening Cash</div>
+          <div style="font-weight:600">${Number(sh.opening_cash).toLocaleString()} MMK</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:.8rem">
+          <div style="font-size:.76rem;color:var(--text-muted)">Closing Cash</div>
+          <div style="font-weight:600">${sh.closing_cash !== null ? Number(sh.closing_cash).toLocaleString()+' MMK' : '—'}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:.8rem">
+          <div style="font-size:.76rem;color:var(--text-muted)">Total Revenue</div>
+          <div style="font-weight:600">${Number(s.total_revenue).toLocaleString()} MMK</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:.8rem">
+          <div style="font-size:.76rem;color:var(--text-muted)">Cash Difference</div>
+          <div>${diff}</div>
+        </div>
+      </div>
+      ${d.orders.length ? `
+      <div style="font-weight:600;margin-bottom:.6rem">📋 Orders (${d.orders.length})</div>
+      <div style="max-height:260px;overflow-y:auto">
+        ${d.orders.map(o=>`
+          <div style="border-bottom:1px solid var(--border);padding:.5rem 0;font-size:.83rem;display:flex;justify-content:space-between;gap:.5rem">
+            <div>
+              <span style="font-weight:600">NH-${String(o.id).padStart(6,'0')}</span>
+              <span style="color:var(--text-muted);margin-left:.5rem">${escHtml(o.items||'')}</span>
+            </div>
+            <div style="white-space:nowrap">${Number(o.total_amount).toLocaleString()} MMK · ${escHtml(o.payment_method)}</div>
+          </div>`).join('')}
+      </div>` : '<div style="color:var(--text-muted);font-size:.85rem">No orders in this shift</div>'}
+      ${sh.notes ? `<div style="margin-top:1rem;padding:.8rem;background:var(--surface2);border-radius:8px;font-size:.85rem"><strong>Notes:</strong> ${escHtml(sh.notes)}</div>` : ''}
+    `;
+  } catch(e) {
+    body.innerHTML = `<div style="color:#e74c3c;padding:1rem">${e.message}</div>`;
+  }
+}
+
+function shiftDuration(openedAt) {
+  const mins = Math.floor((Date.now() - new Date(openedAt)) / 60000);
+  return shiftFmtDur(mins);
+}
+function shiftFmtDur(mins) {
+  if (mins < 60) return `${mins}m`;
+  return `${Math.floor(mins/60)}h ${mins%60}m`;
 }
 
 function showToast(msg, isErr=false) {
