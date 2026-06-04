@@ -140,7 +140,7 @@ WHERE  tag = 'normal'
 --  7. Verify
 -- ────────────────────────────────────────────────────────────────
 SELECT
-    'customers'                 AS tbl, COUNT(*) AS rows FROM customers
+    'customers'                 AS tbl, COUNT(*) AS total FROM customers
 UNION ALL SELECT
     'customer_favourite_items', COUNT(*) FROM customer_favourite_items
 UNION ALL SELECT
