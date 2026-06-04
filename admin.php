@@ -1079,7 +1079,20 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         </div>
 
         
-        <!-- ═══ ANALYTICS SECTION ═══ -->
+        
+        <!-- Customer History Modal -->
+        <div id="cust-history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center">
+          <div style="background:var(--bg);border-radius:16px;padding:1.5rem;max-width:500px;width:95%;max-height:85vh;overflow-y:auto;position:relative">
+            <button onclick="document.getElementById('cust-history-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer">✕</button>
+            <div style="font-weight:600;font-size:1rem;margin-bottom:1rem">👤 Customer Order History</div>
+            <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+              <input type="text" id="cust-phone-input" placeholder="09xxxxxxxxx" style="flex:1;padding:.5rem .75rem;border:1px solid #ddd;border-radius:8px;font-size:.9rem">
+              <button onclick="loadCustHistory()" style="padding:.5rem 1rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">Search</button>
+            </div>
+            <div id="cust-history-result"></div>
+          </div>
+        </div>
+<!-- ═══ ANALYTICS SECTION ═══ -->
         <div id="analytics-section" style="margin-top:1.2rem">
 
           <!-- Date range selector -->
@@ -1148,6 +1161,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <div class="table-toolbar">
             <span style="font-weight:600;font-size:.9rem">📋 Recent Orders</span>
             <button class="btn btn-ghost btn-sm" onclick="showPage('orders')">View All →</button>
+            <button class="btn btn-ghost btn-sm" onclick="openDailyReport()">📊 Daily Report</button>
           </div>
           <div style="overflow-x:auto">
             <table>
@@ -1653,6 +1667,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <div style="display:flex;gap:.5rem">
           <button class="btn btn-ghost btn-sm" onclick="showDeletedLog()">📁 Archive</button>
           <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↺</button>
+          <button class="btn btn-ghost btn-sm" onclick="openCustHistory()">👤 Customer</button>
         </div>
       </div>
       <div class="content">
@@ -2201,6 +2216,63 @@ async function loadLoyaltyCards() {
 function printReceipt(orderId) {
   const w = window.open('receipt.php?id=' + orderId, '_blank', 'width=420,height=650,scrollbars=yes');
   if (!w) alert('Popup blocked — please allow popups for this site');
+}
+
+
+function openDailyReport() {
+  const today = new Date().toISOString().split('T')[0];
+  window.open('daily_report.php?date='+today, '_blank', 'width=900,height=700,scrollbars=yes');
+}
+
+function openCustHistory() {
+  document.getElementById('cust-history-modal').style.display = 'flex';
+  document.getElementById('cust-history-result').innerHTML = '';
+  document.getElementById('cust-phone-input').focus();
+}
+
+async function loadCustHistory() {
+  const phone = document.getElementById('cust-phone-input').value.trim();
+  if (!phone) { toast('Phone number ထည့်ပါ','err'); return; }
+  const el = document.getElementById('cust-history-result');
+  el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:1rem">Loading...</div>';
+  const r = await fetch('customer_history.php?phone=' + encodeURIComponent(phone));
+  const d = await r.json();
+  if (!d.ok) { el.innerHTML = '<div style="color:red">Error: '+d.msg+'</div>'; return; }
+
+  const s = d.stats;
+  const loy = d.loyalty;
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem">
+      <div style="background:#fdf6f0;border-radius:8px;padding:.6rem;text-align:center">
+        <div style="font-size:1.2rem;font-weight:700;color:#e84c2b">${s.total_orders}</div>
+        <div style="font-size:.75rem;color:#888">Orders</div>
+      </div>
+      <div style="background:#fdf6f0;border-radius:8px;padding:.6rem;text-align:center">
+        <div style="font-size:1.1rem;font-weight:700;color:#e84c2b">K${parseInt(s.total_spent).toLocaleString()}</div>
+        <div style="font-size:.75rem;color:#888">Total Spent</div>
+      </div>
+      <div style="background:#fdf6f0;border-radius:8px;padding:.6rem;text-align:center">
+        <div style="font-size:1.1rem;font-weight:700;color:#f0a500">⭐ ${loy.stamps}</div>
+        <div style="font-size:.75rem;color:#888">Stamps</div>
+      </div>
+    </div>
+    ${d.orders.length === 0 ? '<div style="text-align:center;color:var(--muted);padding:1rem">Order မရှိသေး</div>' :
+      '<div style="font-size:.82rem;font-weight:600;margin-bottom:.5rem">Order History</div>' +
+      d.orders.map(o => `
+        <div style="border:0.5px solid #eee;border-radius:8px;padding:.6rem .8rem;margin-bottom:.4rem">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;font-size:.85rem">#${String(o.id).padStart(6,'0')}</span>
+            <span style="font-size:.78rem;color:#888">${o.created_at.substring(0,16)}</span>
+          </div>
+          <div style="font-size:.78rem;color:#555;margin:.2rem 0">${o.items_summary||'—'}</div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:.8rem;color:#888">${o.payment_method?.toUpperCase()||''} · ${o.order_type==='dine_in'?'Dine-in':'Delivery'}</span>
+            <span style="font-weight:600;font-size:.85rem;color:#e84c2b">K${parseInt(o.total_amount).toLocaleString()}</span>
+          </div>
+        </div>
+      `).join('')
+    }
+  `;
 }
 
 async function loadAnalytics(days=7){

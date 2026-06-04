@@ -810,6 +810,7 @@ header{
           <button class="btn-new" onclick="newOrder()">+ New Order</button>
           <button onclick="showLoyaltyCard(document.getElementById('f-phone')?.value?.trim())" style="margin-top:.5rem;width:100%;padding:.65rem;background:none;border:1.5px solid #e84c2b;color:#e84c2b;border-radius:10px;font-size:.88rem;cursor:pointer;font-weight:600">🎟 Stamp Card ကြည့်မည်</button>
           <button onclick="printCustomerReceipt()" style="margin-top:.4rem;width:100%;padding:.65rem;background:none;border:1.5px solid #888;color:#888;border-radius:10px;font-size:.88rem;cursor:pointer">🖨️ Receipt ထုတ်မည်</button>
+          <button onclick="openCustHist()" style="margin-top:.4rem;width:100%;padding:.65rem;background:none;border:1.5px solid #888;color:#888;border-radius:10px;font-size:.88rem;cursor:pointer">📋 Order History ကြည့်</button>
         </div>
       </div>
     </div>
@@ -1791,6 +1792,59 @@ function printCustomerReceipt() {
   if (!w) alert('Popup blocked — please allow popups');
 }
 
+
+function openCustHist() {
+  const phone = document.getElementById('f-phone')?.value?.trim() || '';
+  document.getElementById('ch-phone').value = phone;
+  document.getElementById('cust-hist-modal').style.display = 'flex';
+  document.getElementById('ch-result').innerHTML = '';
+  if (phone) loadCustHist();
+}
+
+async function loadCustHist() {
+  const phone = document.getElementById('ch-phone').value.trim();
+  if (!phone) return;
+  const el = document.getElementById('ch-result');
+  el.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--muted)">Loading...</div>';
+  const r = await fetch('customer_history.php?phone=' + encodeURIComponent(phone));
+  const d = await r.json();
+  if (!d.ok) { el.innerHTML = '<div style="color:red">'+d.msg+'</div>'; return; }
+
+  const s = d.stats;
+  const loy = d.loyalty;
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:.75rem">
+      <div style="background:var(--bg2);border-radius:8px;padding:.5rem;text-align:center">
+        <div style="font-size:1.2rem;font-weight:700;color:#e84c2b">${s.total_orders}</div>
+        <div style="font-size:.72rem;color:var(--muted)">Orders</div>
+      </div>
+      <div style="background:var(--bg2);border-radius:8px;padding:.5rem;text-align:center">
+        <div style="font-size:1rem;font-weight:700;color:#e84c2b">K${parseInt(s.total_spent).toLocaleString()}</div>
+        <div style="font-size:.72rem;color:var(--muted)">Spent</div>
+      </div>
+      <div style="background:var(--bg2);border-radius:8px;padding:.5rem;text-align:center">
+        <div style="font-size:1.1rem;font-weight:700;color:#f0a500">⭐${loy.stamps}</div>
+        <div style="font-size:.72rem;color:var(--muted)">Stamps</div>
+      </div>
+    </div>
+    ${d.orders.length===0 ? '<div style="text-align:center;color:var(--muted);padding:1rem">Order မရှိသေး</div>' :
+      d.orders.map(o=>`
+        <div style="border:0.5px solid var(--border,#eee);border-radius:8px;padding:.6rem .75rem;margin-bottom:.4rem">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;font-size:.82rem">#${String(o.id).padStart(6,'0')}</span>
+            <span style="font-size:.75rem;color:var(--muted)">${o.created_at.substring(0,10)}</span>
+          </div>
+          <div style="font-size:.75rem;color:var(--muted);margin:.2rem 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.items_summary||'—'}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:.75rem;color:var(--muted)">${(o.payment_method||'').toUpperCase()}</span>
+            <span style="font-weight:600;font-size:.85rem;color:#e84c2b">K${parseInt(o.total_amount).toLocaleString()}</span>
+          </div>
+        </div>
+      `).join('')
+    }
+  `;
+}
+
 // ══ LOYALTY STAMP CARD ══
 let _loyPhone = '';
 let _loyRequired = 10;
@@ -1874,6 +1928,20 @@ async function addLoyaltyStamp(phone, order_id) {
 }
 // ══ END LOYALTY ══
 </script>
+
+
+<!-- ═══ CUSTOMER HISTORY MODAL ═══ -->
+<div id="cust-hist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;align-items:center;justify-content:center">
+  <div style="background:var(--bg);border-radius:18px;padding:1.5rem;max-width:380px;width:93%;max-height:85vh;overflow-y:auto;position:relative">
+    <button onclick="document.getElementById('cust-hist-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted)">✕</button>
+    <div style="font-weight:600;font-size:1rem;margin-bottom:1rem">📋 Order History</div>
+    <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+      <input type="text" id="ch-phone" placeholder="09xxxxxxxxx" style="flex:1;padding:.5rem .75rem;border:1px solid #ddd;border-radius:8px;font-size:.88rem">
+      <button onclick="loadCustHist()" style="padding:.5rem .9rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.85rem">Search</button>
+    </div>
+    <div id="ch-result"></div>
+  </div>
+</div>
 
 <!-- ═══ LOYALTY STAMP CARD MODAL ═══ -->
 <div id="loyalty-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
