@@ -768,7 +768,13 @@ header{
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem">🏠 Delivery Details</div>
         <div class="form-row">
           <div class="form-group"><label data-en="Full Name *" data-mm="အမည် *">Full Name *</label><input id="f-name" placeholder="Ma Su Su"></div>
-          <div class="form-group"><label data-en="Phone *" data-mm="ဖုန်းနံပါတ် *">Phone *</label><input id="f-phone" placeholder="09-xxxx-xxxxx"></div>
+          <div class="form-group"><label data-en="Phone *" data-mm="ဖုန်းနံပါတ် *">Phone *</label><input id="f-phone" placeholder="09-xxxx-xxxxx" oninput="crmPhoneInput(this.value)" autocomplete="tel"></div>
+        </div>
+        <div id="crm-reorder-box" style="display:none;margin-bottom:.8rem">
+          <button id="crm-reorder-btn" onclick="crmDoReorder()"
+            style="width:100%;padding:.65rem;background:linear-gradient(135deg,#e84c2b,#ff6b3d);color:#fff;border:none;border-radius:10px;font-size:.88rem;cursor:pointer;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.5rem">
+            🔁 <span id="crm-reorder-label">Reorder လုပ်မည်</span>
+          </button>
         </div>
         <div class="form-group" id="address-row"><label data-en="Address *" data-mm="လိပ်စာ *">Address *</label><input id="f-address" placeholder="Street, Township, City"></div>
         <div class="form-row" id="township-row">
@@ -1360,6 +1366,73 @@ function showDeliveryStep() {
 /* ═══════════════════════════════════════
    SUBMIT ORDER
 ═══════════════════════════════════════ */
+/* ── Phase 5A: CRM Reorder ── */
+let _crmReorderTimer = null;
+let _crmLastItems    = [];
+
+function crmPhoneInput(phone) {
+  clearTimeout(_crmReorderTimer);
+  const box = document.getElementById('crm-reorder-box');
+  if (!box) return;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 9) { box.style.display = 'none'; _crmLastItems = []; return; }
+  _crmReorderTimer = setTimeout(() => crmCheckLastOrder(phone.trim()), 600);
+}
+
+async function crmCheckLastOrder(phone) {
+  const box = document.getElementById('crm-reorder-box');
+  const lbl = document.getElementById('crm-reorder-label');
+  if (!box || !lbl) return;
+  try {
+    const r = await fetch('crm_api.php?action=last_order&phone=' + encodeURIComponent(phone));
+    const d = await r.json();
+    if (!d.ok || !d.items || d.items.length === 0) { box.style.display = 'none'; return; }
+    // Filter: active items with stock
+    const available = d.items.filter(i => i.is_active == 1 && (i.stock_qty === null || i.stock_qty > 0));
+    if (available.length === 0) { box.style.display = 'none'; return; }
+    _crmLastItems = available;
+    const names = available.slice(0,2).map(i => i.item_name).join(', ');
+    const more  = available.length > 2 ? ` +${available.length-2}` : '';
+    lbl.textContent = `Reorder: ${names}${more}`;
+    box.style.display = 'block';
+  } catch(e) { box.style.display = 'none'; }
+}
+
+function crmDoReorder() {
+  if (!_crmLastItems.length) return;
+  let added = 0;
+  _crmLastItems.forEach(item => {
+    const id  = item.menu_item_id;
+    const qty = parseInt(item.qty) || 1;
+    // Use existing menu data if available
+    const menuItem = (typeof menu !== "undefined") ? menu.find(m => m.id == id) : null;
+    if (!menuItem) return;
+    const key = String(id);
+    if (cart[key]) {
+      cart[key].qty = Math.min(cart[key].qty + qty, menuItem.stock || 99);
+    } else {
+      cart[key] = {
+        id:    menuItem.id,
+        name:  menuItem.name,
+        price: menuItem.price,
+        qty:   Math.min(qty, menuItem.stock || 99),
+        emoji: menuItem.emoji || '🍽️',
+        modifiers: [],
+        cartKey: key,
+      };
+    }
+    added++;
+  });
+  if (added > 0) {
+    saveCart(); renderCartUI(); renderMenu();
+    document.getElementById('crm-reorder-box').style.display = 'none';
+    _crmLastItems = [];
+    toast(`🔁 ${added} items added to cart`);
+  } else {
+    toast('⚠️ Items not available');
+  }
+}
+
 async function submitOrder() {
   const name    = document.getElementById('f-name').value.trim();
   const phone   = document.getElementById('f-phone').value.trim();
