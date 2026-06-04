@@ -1587,6 +1587,40 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
             <div id="kpay-qr-no-img" style="font-size:.78rem;color:var(--muted);margin-top:.4rem">⚠️ QR image မရှိသေး — upload လုပ်ပါ</div>
           </div>
 
+          <!-- ═══ LOYALTY SETTINGS ═══ -->
+          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem;margin-top:1.5rem">🎟 Loyalty Program</div>
+
+          <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem">
+            <label style="font-size:.85rem;font-weight:600">Enable Loyalty Program</label>
+            <select id="st-loyalty_enabled" style="font-size:.82rem;padding:.3rem .6rem;border:1px solid #ddd;border-radius:6px">
+              <option value="1">✅ On</option>
+              <option value="0">❌ Off</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Stamps required for reward</label>
+            <input type="number" id="st-loyalty_stamps_required" min="1" max="50" value="10"
+              style="width:100px;font-size:.85rem;padding:.35rem .6rem;border:1px solid #ddd;border-radius:6px">
+          </div>
+
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Reward description</label>
+            <input type="text" id="st-loyalty_reward_label" value="Free item တစ်ခု"
+              style="width:100%;font-size:.85rem;padding:.35rem .6rem;border:1px solid #ddd;border-radius:6px">
+          </div>
+
+          <!-- Loyalty cards list -->
+          <div style="margin-top:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+              <div style="font-size:.82rem;font-weight:600">Customer Stamp Cards</div>
+              <button onclick="loadLoyaltyCards()" style="padding:.3rem .7rem;background:#e84c2b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.78rem">🔄 Refresh</button>
+            </div>
+            <div id="loyalty-cards-list" style="font-size:.82rem;color:var(--muted)">— Load လုပ်ရန် Refresh နှိပ်ပါ —</div>
+          </div>
+
+
+
 
 
           <!-- Live footer preview -->
@@ -2145,6 +2179,23 @@ async function filterPending() {
 let _charts = {};
 function fmtK(v){v=parseFloat(v);if(v>=1000000)return(v/1000000).toFixed(1)+'M';if(v>=1000)return(v/1000).toFixed(1)+'K';return v.toLocaleString();}
 function destroyChart(id){if(_charts[id]){_charts[id].destroy();delete _charts[id];}}
+
+
+async function loadLoyaltyCards() {
+  const r = await fetch('loyalty.php?action=admin_list');
+  const d = await r.json();
+  const el = document.getElementById('loyalty-cards-list');
+  if (!el) return;
+  if (!d.ok || !d.cards.length) { el.innerHTML = '<div style="color:var(--muted)">Stamp cards မရှိသေး</div>'; return; }
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.8rem">' +
+    '<thead><tr style="border-bottom:1px solid #eee"><th style="text-align:left;padding:.3rem">Phone</th><th>Stamps</th><th>Redeemed</th><th>Last order</th></tr></thead>' +
+    '<tbody>' + d.cards.map(c => `<tr style="border-bottom:.5px solid #f0f0f0">
+      <td style="padding:.35rem 0">${c.phone}</td>
+      <td style="text-align:center">⭐ ${c.stamps}</td>
+      <td style="text-align:center">🎁 ${c.total_redeemed}</td>
+      <td style="text-align:center;color:#999">#${c.last_order_id||'—'}</td>
+    </tr>`).join('') + '</tbody></table>';
+}
 
 async function loadAnalytics(days=7){
   [7,14,30].forEach(d=>{

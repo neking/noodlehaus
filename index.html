@@ -808,6 +808,7 @@ header{
         <div class="success-btns">
           <button class="btn-track" onclick="trackAndClose()">📍 Track Order</button>
           <button class="btn-new" onclick="newOrder()">+ New Order</button>
+          <button onclick="showLoyaltyCard(document.getElementById('f-phone')?.value?.trim())" style="margin-top:.5rem;width:100%;padding:.65rem;background:none;border:1.5px solid #e84c2b;color:#e84c2b;border-radius:10px;font-size:.88rem;cursor:pointer;font-weight:600">🎟 Stamp Card ကြည့်မည်</button>
         </div>
       </div>
     </div>
@@ -1394,6 +1395,11 @@ async function submitOrder() {
     orderId  = data.db_id;
     orderRef = data.order_id;
 
+    // Loyalty stamp
+    const _loyPhoneEl = document.getElementById('cust-phone') || document.getElementById('inp-phone') || document.getElementById('f-phone');
+    const _loyPhoneVal = _loyPhoneEl?.value?.trim() || '';
+    if (_loyPhoneVal) addLoyaltyStamp(_loyPhoneVal, data.order_id);
+
     // Add to orders array
     orders.push({id: orderId, ref: orderRef, ts: Date.now()});
     try { localStorage.setItem('nh_orders', JSON.stringify(orders)); } catch(e){}
@@ -1774,5 +1780,123 @@ document.addEventListener('change', e => {
   }
 })();
 </script>
+
+
+<script>
+// ══ LOYALTY STAMP CARD ══
+let _loyPhone = '';
+let _loyRequired = 10;
+let _loyReward = '';
+
+async function showLoyaltyCard(phone) {
+  if (!phone) { alert('Phone number ထည့်ပြီးမှ stamp card ကြည့်ပါ'); return; }
+  _loyPhone = phone;
+  const r = await fetch('loyalty.php?action=get&phone=' + encodeURIComponent(phone));
+  const d = await r.json();
+  if (!d.ok || !d.enabled) return;
+
+  _loyRequired = d.required;
+  _loyReward   = d.reward;
+  const stamps   = d.stamps;
+  const progress = stamps % d.required;
+  const redeemable = Math.floor(stamps / d.required);
+
+  document.getElementById('loy-phone-label').textContent = phone;
+
+  const grid = document.getElementById('loy-stamp-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < d.required; i++) {
+    const filled = i < progress;
+    const div = document.createElement('div');
+    div.style.cssText = `width:100%;aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;border:2px solid ${filled?'#e84c2b':'#ddd'};background:${filled?'#e84c2b':'transparent'}`;
+    div.textContent = filled ? '⭐' : '';
+    grid.appendChild(div);
+  }
+
+  document.getElementById('loy-progress-label').textContent = progress + ' / ' + d.required + ' stamps';
+  document.getElementById('loy-progress-bar').style.width = (progress / d.required * 100) + '%';
+  document.getElementById('loy-reward-label').textContent = 'Reward: ' + d.reward;
+
+  const redeemWrap = document.getElementById('loy-redeem-wrap');
+  if (redeemable > 0) {
+    redeemWrap.style.display = 'block';
+    document.getElementById('loy-reward-desc').textContent = d.reward;
+  } else {
+    redeemWrap.style.display = 'none';
+  }
+
+  document.getElementById('loyalty-modal').style.display = 'flex';
+}
+
+function closeLoyalty() {
+  document.getElementById('loyalty-modal').style.display = 'none';
+}
+
+async function redeemLoyalty() {
+  if (!_loyPhone) return;
+  const r = await fetch('loyalty.php?action=redeem', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({phone: _loyPhone})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    if(typeof toast==='function') toast('🎁 Reward ထုတ်ယူပြီး!');
+    closeLoyalty();
+  } else {
+    alert(d.msg);
+  }
+}
+
+async function addLoyaltyStamp(phone, order_id) {
+  if (!phone) return;
+  try {
+    const r = await fetch('loyalty.php?action=stamp', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({phone, order_id})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      const left = d.required - d.progress;
+      if(typeof toast==='function') {
+        if (d.redeemable > 0) toast('🎉 Reward ထုတ်ယူနိုင်ပြီ! Stamp ' + d.stamps + '/' + d.required);
+        else toast('⭐ Stamp ' + d.stamps + '/' + d.required + ' — နောက်ထပ် ' + left + ' ကြိမ်ဆို reward ရမည်');
+      }
+    }
+  } catch(e) {}
+}
+// ══ END LOYALTY ══
+</script>
+
+<!-- ═══ LOYALTY STAMP CARD MODAL ═══ -->
+<div id="loyalty-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg);border-radius:18px;padding:1.5rem;max-width:340px;width:90%;margin:auto;position:relative">
+    <button onclick="closeLoyalty()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted)">✕</button>
+    <div style="text-align:center;margin-bottom:1rem">
+      <div style="font-size:2rem">🎟</div>
+      <div style="font-weight:700;font-size:1.1rem;margin:.3rem 0">Loyalty Stamp Card</div>
+      <div style="font-size:.82rem;color:var(--muted)" id="loy-phone-label"></div>
+    </div>
+    <!-- Stamp grid -->
+    <div id="loy-stamp-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem"></div>
+    <!-- Progress info -->
+    <div style="text-align:center;margin-bottom:1rem">
+      <div style="font-size:.85rem;color:var(--muted)" id="loy-progress-label"></div>
+      <div style="background:#f0f0f0;border-radius:20px;height:8px;margin:.5rem 0;overflow:hidden">
+        <div id="loy-progress-bar" style="background:#e84c2b;height:100%;border-radius:20px;transition:width .4s"></div>
+      </div>
+      <div style="font-size:.78rem;color:var(--muted)" id="loy-reward-label"></div>
+    </div>
+    <!-- Redeem button -->
+    <div id="loy-redeem-wrap" style="display:none;text-align:center;margin-bottom:.75rem">
+      <div style="background:#fff3cd;border:1px solid #f0a500;border-radius:10px;padding:.75rem;margin-bottom:.75rem">
+        <div style="font-size:.9rem;font-weight:600;color:#856404">🎉 Reward ထုတ်ယူနိုင်ပြီ!</div>
+        <div style="font-size:.8rem;color:#856404" id="loy-reward-desc"></div>
+      </div>
+      <button onclick="redeemLoyalty()" style="width:100%;padding:.75rem;background:#e84c2b;color:#fff;border:none;border-radius:10px;font-size:.95rem;cursor:pointer;font-weight:600">🎁 Reward ထုတ်ယူမည်</button>
+    </div>
+    <div style="font-size:.75rem;color:var(--muted);text-align:center">ဖုန်းနံပါတ်တူလျှင် stamp အလိုအလျောက်ထပ်သည်</div>
+  </div>
+</div>
+
 </body>
 </html>
