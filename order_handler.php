@@ -208,4 +208,34 @@ if (!empty($customerPhone)) {
     } catch(Exception $e) { /* stamp fail သည် order ကို မထိ */ }
 }
 
+// ── Phase 5A: CRM profile sync (fire-and-forget, order ကို မထိ) ──
+if (!empty($customerPhone)) {
+    try {
+        $crmItems = [];
+        foreach ($items as $item) {
+            $crmItems[] = [
+                'menu_item_id' => (int)$item['item_id'],
+                'item_name'    => sanitizeStr($item['name'] ?? ''),
+                'qty'          => (int)$item['qty'],
+            ];
+        }
+        $crmPayload = json_encode([
+            'phone'          => $customerPhone,
+            'name'           => sanitizeStr($customer['name'] ?? ''),
+            'payment_method' => $paymentMethod,
+            'order_id'       => $orderId,
+            'total'          => $total,
+            'items'          => $crmItems,
+        ]);
+        $ctx = stream_context_create(['http' => [
+            'method'  => 'POST',
+            'header'  => 'Content-Type: application/json',
+            'content' => $crmPayload,
+            'timeout' => 2,
+        ]]);
+        @file_get_contents('http://localhost/crm_api.php?action=upsert', false, $ctx);
+    } catch(Exception $e) { /* CRM sync fail သည် order ကို မထိ */ }
+}
+
 exit;
+
