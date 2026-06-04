@@ -988,6 +988,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
   .reason-grid{grid-template-columns:1fr;}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -1077,7 +1078,72 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           </div>
         </div>
 
-        <!-- Recent Orders (Dashboard) -->
+        
+        <!-- ═══ ANALYTICS SECTION ═══ -->
+        <div id="analytics-section" style="margin-top:1.2rem">
+
+          <!-- Date range selector -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
+            <div style="font-weight:600;font-size:.95rem">📈 Analytics</div>
+            <div style="display:flex;gap:.4rem">
+              <button onclick="loadAnalytics(7)"  id="abtn-7"  class="btn btn-sm btn-ghost" style="font-size:.78rem">7D</button>
+              <button onclick="loadAnalytics(14)" id="abtn-14" class="btn btn-sm btn-ghost" style="font-size:.78rem">14D</button>
+              <button onclick="loadAnalytics(30)" id="abtn-30" class="btn btn-sm btn-ghost" style="font-size:.78rem">30D</button>
+            </div>
+          </div>
+
+          <!-- Summary mini cards -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem">
+            <div class="stat-card" style="padding:.7rem;text-align:center">
+              <div style="font-size:.72rem;color:var(--muted)">Total Orders</div>
+              <div style="font-size:1.3rem;font-weight:700;color:var(--accent)" id="an-total-orders">—</div>
+            </div>
+            <div class="stat-card" style="padding:.7rem;text-align:center">
+              <div style="font-size:.72rem;color:var(--muted)">Total Revenue</div>
+              <div style="font-size:1.1rem;font-weight:700;color:#28a745" id="an-total-rev">—</div>
+            </div>
+            <div class="stat-card" style="padding:.7rem;text-align:center">
+              <div style="font-size:.72rem;color:var(--muted)">Avg Order</div>
+              <div style="font-size:1.1rem;font-weight:700;color:var(--accent2)" id="an-avg-order">—</div>
+            </div>
+          </div>
+
+          <!-- Revenue chart -->
+          <div class="stat-card" style="padding:1rem;margin-bottom:.8rem">
+            <div style="font-size:.82rem;font-weight:600;margin-bottom:.6rem">💰 Daily Revenue</div>
+            <div style="position:relative;height:180px">
+              <canvas id="chart-revenue"></canvas>
+            </div>
+          </div>
+
+          <!-- Top items + Payment breakdown -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem">
+            <div class="stat-card" style="padding:1rem">
+              <div style="font-size:.82rem;font-weight:600;margin-bottom:.6rem">🍜 Top Items</div>
+              <div style="position:relative;height:200px">
+                <canvas id="chart-items"></canvas>
+              </div>
+            </div>
+            <div class="stat-card" style="padding:1rem">
+              <div style="font-size:.82rem;font-weight:600;margin-bottom:.6rem">💳 Payment Split</div>
+              <div style="position:relative;height:200px">
+                <canvas id="chart-payments"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hourly heatmap -->
+          <div class="stat-card" style="padding:1rem;margin-bottom:1rem">
+            <div style="font-size:.82rem;font-weight:600;margin-bottom:.6rem">🕐 Peak Hours</div>
+            <div style="position:relative;height:120px">
+              <canvas id="chart-hourly"></canvas>
+            </div>
+          </div>
+
+        </div>
+        <!-- ═══ END ANALYTICS ═══ -->
+
+<!-- Recent Orders (Dashboard) -->
         <div class="table-wrap" style="margin-top:1rem">
           <div class="table-toolbar">
             <span style="font-weight:600;font-size:.9rem">📋 Recent Orders</span>
@@ -2073,6 +2139,51 @@ async function filterPending() {
     });
   }, 600);
 }
+
+
+// ══ ANALYTICS ══
+let _charts = {};
+function fmtK(v){v=parseFloat(v);if(v>=1000000)return(v/1000000).toFixed(1)+'M';if(v>=1000)return(v/1000).toFixed(1)+'K';return v.toLocaleString();}
+function destroyChart(id){if(_charts[id]){_charts[id].destroy();delete _charts[id];}}
+
+async function loadAnalytics(days=7){
+  [7,14,30].forEach(d=>{
+    const b=document.getElementById('abtn-'+d);
+    if(b){b.style.background=d===days?'var(--accent)':'';b.style.color=d===days?'#fff':'';}
+  });
+  const r=await fetch('analytics.php?days='+days);
+  const d=await r.json();
+  if(!d.ok)return;
+
+  document.getElementById('an-total-orders').textContent=d.summary.total_orders;
+  document.getElementById('an-total-rev').textContent='K '+fmtK(d.summary.total_revenue);
+  document.getElementById('an-avg-order').textContent='K '+fmtK(d.summary.avg_order);
+
+  const ac='#e84c2b', ac2='#f0a500';
+
+  destroyChart('revenue');
+  const rC=document.getElementById('chart-revenue')?.getContext('2d');
+  if(rC) _charts['revenue']=new Chart(rC,{type:'bar',data:{labels:d.revenue.map(r=>r.date),datasets:[{label:'Revenue',data:d.revenue.map(r=>r.revenue),backgroundColor:ac+'99',borderColor:ac,borderWidth:1,borderRadius:4},{label:'Orders',data:d.revenue.map(r=>r.orders),type:'line',borderColor:ac2,backgroundColor:'transparent',pointBackgroundColor:ac2,pointRadius:3,tension:0.4,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},color:'#888'}}},scales:{x:{ticks:{font:{size:9},color:'#888'},grid:{display:false}},y:{ticks:{font:{size:9},color:'#888',callback:v=>'K'+fmtK(v)},grid:{color:'#f0f0f0'}},y2:{position:'right',ticks:{font:{size:9},color:ac2},grid:{display:false}}}}});
+
+  destroyChart('items');
+  const iC=document.getElementById('chart-items')?.getContext('2d');
+  if(iC&&d.items.length) _charts['items']=new Chart(iC,{type:'bar',data:{labels:d.items.map(i=>i.item_name.length>14?i.item_name.substring(0,14)+'…':i.item_name),datasets:[{label:'Qty',data:d.items.map(i=>i.qty),backgroundColor:['#e84c2bcc','#f0a500cc','#28a745cc','#17a2b8cc','#6f42c1cc','#fd7e14cc','#20c997cc','#e83e8ccc'],borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},color:'#888'},grid:{color:'#f0f0f0'}},y:{ticks:{font:{size:9},color:'#555'},grid:{display:false}}}}});
+
+  destroyChart('payments');
+  const pC=document.getElementById('chart-payments')?.getContext('2d');
+  if(pC&&d.payments.length){
+    const pc={kpay:'#9b59b6',wave:'#3498db',cb:'#e74c3c',aya:'#2ecc71',cod:'#95a5a6',card:'#f39c12'};
+    _charts['payments']=new Chart(pC,{type:'doughnut',data:{labels:d.payments.map(p=>p.payment_method.toUpperCase()),datasets:[{data:d.payments.map(p=>p.cnt),backgroundColor:d.payments.map(p=>pc[p.payment_method]||'#bbb'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:9},color:'#555',padding:8}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw} orders`}}}}});
+  }
+
+  destroyChart('hourly');
+  const hC=document.getElementById('chart-hourly')?.getContext('2d');
+  if(hC){
+    const mx=Math.max(...d.hourly.map(h=>h.count),1);
+    _charts['hourly']=new Chart(hC,{type:'bar',data:{labels:d.hourly.map(h=>h.hour%6===0?h.hour+'h':''),datasets:[{label:'Orders',data:d.hourly.map(h=>h.count),backgroundColor:d.hourly.map(h=>{const r=h.count/mx;return r>0.7?'#e84c2b':r>0.3?'#f0a500':'#ddd';}),borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:8},color:'#888'},grid:{display:false}},y:{ticks:{font:{size:8},color:'#888',stepSize:1},grid:{color:'#f0f0f0'}}}}});
+  }
+}
+// ══ END ANALYTICS ══
 
 async function loadStats() {
   document.getElementById('dash-date').textContent =
