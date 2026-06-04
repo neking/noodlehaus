@@ -1,1 +1,7 @@
-logs/
+uploads/menu/*
+uploads/header/*
+uploads/footer/*
+uploads/kpay/*
+!uploads/.gitkeep
+*.log
+.env

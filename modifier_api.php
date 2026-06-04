@@ -1,11 +1,14 @@
 <?php
 declare(strict_types=1);
+
+require_once __DIR__ . '/db_connect.php';
+$pdo = getPDO();
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
 /* ── DB CONFIG ── */
-define('DB_HOST','localhost'); define('DB_PORT','3306');
-define('DB_NAME','noodlehaus'); define('DB_USER','root'); define('DB_PASS','');
+
 
 function db(): PDO {
     static $pdo;

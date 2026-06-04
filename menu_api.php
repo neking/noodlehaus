@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/db_connect.php';
+$pdo = getPDO();
+
+
 // Error တွေကို JSON ထဲပါအောင် catch လုပ်
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
@@ -26,31 +30,10 @@ header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Cache-Control: no-cache');
 
-define('DB_HOST','localhost');
-define('DB_PORT','3306');
-define('DB_NAME','noodlehaus');
-define('DB_USER','root');
-define('DB_PASS','');
+
 
 /* ── DB Connect ── */
-try {
-    $pdo = new PDO(
-        sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
-            DB_HOST, DB_PORT, DB_NAME),
-        DB_USER, DB_PASS,
-        [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]
-    );
-} catch (PDOException $e) {
-    echo json_encode([
-        'ok'      => false,
-        'message' => 'DB connect failed: ' . $e->getMessage(),
-        'hint'    => 'Check DB_USER/DB_PASS in menu_api.php and make sure MySQL is running'
-    ]);
-    exit;
-}
+
 
 /* ── Menu items ── */
 try {

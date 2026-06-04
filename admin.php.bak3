@@ -1,5 +1,9 @@
+
+require_once __DIR__ . \'/db_connect.php\';
+$pdo = getPDO();
 <?php
 session_start();
+
 require_once __DIR__ . '/db_connect.php';
 $pdo = getPDO();
 
@@ -547,46 +551,6 @@ if (isset($_GET['api'])) { // GET+POST both handled
                 db()->prepare("UPDATE menu_items SET image_path=:p WHERE id=:id")
                     ->execute([':p'=>$relPath, ':id'=>$itemId]);
             }
-        }
-        echo json_encode(['ok'=>true,'path'=>$relPath]);
-        exit;
-    }
-
-    /* upload KPay QR image */
-    if ($_GET['api'] === 'upload_kpay_qr' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (empty($_FILES['img'])) { echo json_encode(['ok'=>false,'msg'=>'No file']); exit; }
-        $file    = $_FILES['img'];
-        $allowed = ['image/jpeg','image/png','image/gif','image/webp'];
-        if (!in_array($file['type'], $allowed)) { echo json_encode(['ok'=>false,'msg'=>'JPG/PNG/GIF/WEBP only']); exit; }
-        if ($file['size'] > 3*1024*1024) { echo json_encode(['ok'=>false,'msg'=>'Max 3MB']); exit; }
-        $dir  = __DIR__ . '/uploads/kpay/';
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-        $name = 'kpay_qr_' . time() . '.jpg';
-        $dest = $dir . $name;
-        $relPath = 'uploads/kpay/' . $name;
-        if (function_exists('imagecreatefromjpeg')) {
-            $src = match($file['type']) {
-                'image/jpeg' => imagecreatefromjpeg($file['tmp_name']),
-                'image/png'  => imagecreatefrompng($file['tmp_name']),
-                'image/gif'  => imagecreatefromgif($file['tmp_name']),
-                'image/webp' => imagecreatefromwebp($file['tmp_name']),
-                default      => false,
-            };
-            if ($src) {
-                $w = imagesx($src); $h = imagesy($src);
-                $dst = imagecreatetruecolor($w, $h);
-                imagecopy($dst, $src, 0, 0, 0, 0, $w, $h);
-                imagejpeg($dst, $dest, 90);
-                imagedestroy($src); imagedestroy($dst);
-            } else { move_uploaded_file($file['tmp_name'], $dest); }
-        } else { move_uploaded_file($file['tmp_name'], $dest); }
-        // site_settings မှာ သိမ်း
-        $chk = db()->prepare("SELECT setting_key FROM site_settings WHERE setting_key='kpay_qr_image'");
-        $chk->execute();
-        if ($chk->fetch()) {
-            db()->prepare("UPDATE site_settings SET setting_value=:v WHERE setting_key='kpay_qr_image'")->execute([':v'=>$relPath]);
-        } else {
-            db()->prepare("INSERT INTO site_settings(setting_key,setting_value,label) VALUES('kpay_qr_image',:v,'KPay QR Image')")->execute([':v'=>$relPath]);
         }
         echo json_encode(['ok'=>true,'path'=>$relPath]);
         exit;
@@ -1189,7 +1153,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <button class="hamburger" onclick="openSidebar()" title="Menu">☰</button>
           <div class="page-title">Site Settings</div>
         </div>
-        <button class="btn btn-primary" onclick="collectTownshipPromo(); saveSettings()">💾 Save</button>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Save</button>
       </div>
       <div class="content">
 
@@ -1214,23 +1178,6 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
               <input type="number" id="st-delivery_fee" placeholder="150" min="0">
             </div>
           </div>
-        </div>
-
-
-
-        <!-- TOWNSHIP FEES + PROMO CODES -->
-        <div style="margin-bottom:1.5rem">
-          <div style="font-weight:600;margin-bottom:.75rem;font-size:.95rem">🚚 Township Delivery Fees</div>
-          <div id="township-fee-editor"></div>
-          <button type="button" onclick="addTownshipRow()" style="margin-top:.5rem;padding:.35rem .8rem;background:#e84c2b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.82rem">+ မြို့နယ်ထည့်</button>
-          <input type="hidden" id="st-township_fees">
-        </div>
-
-        <div style="margin-bottom:1.5rem">
-          <div style="font-weight:600;margin-bottom:.75rem;font-size:.95rem">🎟 Promo Codes</div>
-          <div id="promo-code-editor"></div>
-          <button type="button" onclick="addPromoRow()" style="margin-top:.5rem;padding:.35rem .8rem;background:#e84c2b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.82rem">+ Promo ထည့်</button>
-          <input type="hidden" id="st-promo_codes">
         </div>
 
         <!-- HEADER APPEARANCE -->
@@ -1497,31 +1444,6 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
                 onclick="removeFooterImg('logo')" style="display:none">✕ Remove</button>
             </div>
           </div>
-
-          <!-- ═══════════════════════════════════════════════════ -->
-          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem;margin-top:1.5rem">💳 Payment Settings</div>
-
-          <!-- KPay QR Image Upload -->
-          <div style="margin-bottom:1rem">
-            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.4rem">KPay QR Code Image</label>
-            <div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">Customer checkout မှာ KPay ရွေးရင် ဒီ QR image ပြမည်</div>
-            <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
-              <input type="file" id="kpay-qr-input" accept="image/*"
-                onchange="uploadKpayQr(this)"
-                style="font-size:.82rem;max-width:220px">
-              <button type="button" id="kpay-qr-remove-btn"
-                onclick="removeKpayQr()"
-                style="display:none;padding:.3rem .7rem;background:#dc3545;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem">✕ Remove</button>
-            </div>
-            <div id="kpay-qr-preview" style="margin-top:.6rem;display:none">
-              <img id="kpay-qr-img" src="" alt="KPay QR"
-                style="max-width:180px;max-height:180px;border:2px solid #e84c2b;border-radius:10px;object-fit:contain;background:#fff;padding:6px">
-              <div id="kpay-qr-status" style="font-size:.75rem;color:#28a745;margin-top:.3rem">✅ QR image ထည့်ပြီး</div>
-            </div>
-            <div id="kpay-qr-no-img" style="font-size:.78rem;color:var(--muted);margin-top:.4rem">⚠️ QR image မရှိသေး — upload လုပ်ပါ</div>
-          </div>
-
-
 
           <!-- Live footer preview -->
           <div style="margin-top:.8rem">
@@ -1913,64 +1835,6 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 <div class="toast" id="toast"></div>
 
 <script>
-
-// ── KPay QR Upload ──────────────────────────────
-async function uploadKpayQr(input) {
-  if (!input.files[0]) return;
-  const fd = new FormData();
-  fd.append('img', input.files[0]);
-  const btn = document.getElementById('kpay-qr-remove-btn');
-  const preview = document.getElementById('kpay-qr-preview');
-  const noImg = document.getElementById('kpay-qr-no-img');
-  const status = document.getElementById('kpay-qr-status');
-  if (status) status.textContent = 'Uploading...';
-  try {
-    const r = await fetch('admin.php?api=upload_kpay_qr', {method:'POST', body:fd});
-    const d = await r.json();
-    if (d.ok) {
-      document.getElementById('kpay-qr-img').src = '/' + d.path + '?t=' + Date.now();
-      if (preview) preview.style.display = 'block';
-      if (btn) btn.style.display = 'inline-block';
-      if (noImg) noImg.style.display = 'none';
-      if (status) status.textContent = 'QR image saved';
-    } else { alert('Upload failed: ' + d.msg); }
-  } catch(e) { alert('Upload error: ' + e); }
-}
-
-async function removeKpayQr() {
-  if (!confirm('KPay QR image ဖျက်မှာ သေချာပါသလား?')) return;
-  const r = await fetch('site_settings.php?action=save', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({kpay_qr_image: ''})
-  });
-  const d = await r.json();
-  if (d.ok) {
-    document.getElementById('kpay-qr-img').src = '';
-    document.getElementById('kpay-qr-preview').style.display = 'none';
-    document.getElementById('kpay-qr-remove-btn').style.display = 'none';
-    document.getElementById('kpay-qr-no-img').style.display = 'block';
-    document.getElementById('kpay-qr-input').value = '';
-  }
-}
-
-// ── KPay QR loadSettings populate ───────────────
-function populateKpayQrPreview(s) {
-  const kpayUrl = s.kpay_qr_image || '';
-  const kpayImg = document.getElementById('kpay-qr-img');
-  const kpayPreview = document.getElementById('kpay-qr-preview');
-  const kpayRemoveBtn = document.getElementById('kpay-qr-remove-btn');
-  const kpayNoImg = document.getElementById('kpay-qr-no-img');
-  if (kpayImg && kpayUrl) {
-    kpayImg.src = '/' + kpayUrl + '?t=' + Date.now();
-    if (kpayPreview) kpayPreview.style.display = 'block';
-    if (kpayRemoveBtn) kpayRemoveBtn.style.display = 'inline-block';
-    if (kpayNoImg) kpayNoImg.style.display = 'none';
-  } else {
-    if (kpayNoImg) kpayNoImg.style.display = 'block';
-    if (kpayPreview) kpayPreview.style.display = 'none';
-  }
-}
-
 /* ═══════════════════════════════════════
    STATE
 ═══════════════════════════════════════ */
@@ -2951,7 +2815,7 @@ async function loadSettings() {
     if (!d.ok) { toast('Settings load failed','err'); return; }
     const s = d.settings || {};
     const keys = [
-      'store_name','store_emoji','open_hours','delivery_fee','township_fees','promo_codes',
+      'store_name','store_emoji','open_hours','delivery_fee',
       'hero_badge','delivery_label','hero_title_line1','hero_title_line2','hero_subtitle',
       'announcement_text','announcement_color','announcement_on',
       'header_bg_color','header_logo_text_color','header_text_color','header_bg_img_opacity',
@@ -3023,8 +2887,6 @@ async function loadSettings() {
     updateHeroPreview();
     updateFooterPreview();
     updateHeaderPreview();
-    populateKpayQrPreview(s);
-    if(typeof initTownshipEditors==='function') initTownshipEditors(s);
   } catch(e) {
     toast('Settings load error: '+e.message,'err');
   }
@@ -3280,7 +3142,7 @@ function updateAnnPreview() {
 
 async function saveSettings() {
   const keys = [
-    'store_name','store_emoji','open_hours','delivery_fee','township_fees','promo_codes',
+    'store_name','store_emoji','open_hours','delivery_fee',
     'hero_badge','delivery_label','hero_title_line1','hero_title_line2','hero_subtitle',
     'announcement_text','announcement_color','announcement_on',
     'header_bg_color','header_logo_text_color','header_text_color','header_bg_img_opacity',
@@ -3316,57 +3178,6 @@ async function saveSettings() {
 <?php if ($loggedIn): ?>
 showPage('dashboard');
 <?php endif; ?>
-</script>
-<script>
-function twRow(n,f){
-  var d=document.createElement('div');
-  d.style.cssText='display:flex;gap:6px;margin-bottom:4px';
-  d.innerHTML='<input class="tw-n" placeholder="မြို့နယ်" value="'+n+'" style="flex:2;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
-    +'<input type="number" class="tw-f" placeholder="Ks" value="'+f+'" style="flex:1;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
-    +'<button type="button" style="padding:.3rem .6rem;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer" onclick="this.parentElement.remove()">✕</button>';
-  return d;
-}
-function prRow(c,t,v,l){
-  var d=document.createElement('div');
-  d.style.cssText='display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap';
-  d.innerHTML='<input class="pr-c" placeholder="CODE" value="'+c+'" style="width:90px;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem;text-transform:uppercase">'
-    +'<select class="pr-t" style="padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
-    +'<option value="fixed"'+(t==='fixed'?' selected':'')+'>Fixed Ks</option>'
-    +'<option value="percent"'+(t==='percent'?' selected':'')+'>Percent %</option>'
-    +'<option value="free_ship"'+(t==='free_ship'?' selected':'')+'>Free ship</option></select>'
-    +'<input type="number" class="pr-v" placeholder="value" value="'+v+'" style="width:80px;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
-    +'<input class="pr-l" placeholder="label" value="'+l+'" style="flex:1;min-width:100px;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
-    +'<button type="button" style="padding:.3rem .6rem;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer" onclick="this.parentElement.remove()">✕</button>';
-  return d;
-}
-function addTownshipRow(){document.getElementById('township-fee-editor').appendChild(twRow('',''));}
-function addPromoRow(){document.getElementById('promo-code-editor').appendChild(prRow('','fixed','',''));}
-function initTownshipEditors(s){
-  var tw={};try{tw=JSON.parse(s.township_fees||'{}');}catch(e){}
-  var wrap=document.getElementById('township-fee-editor');
-  if(wrap){wrap.innerHTML='';Object.entries(tw).forEach(function(e){wrap.appendChild(twRow(e[0],e[1]));});}
-  var pr=[];try{pr=JSON.parse(s.promo_codes||'[]');}catch(e){}
-  var pw=document.getElementById('promo-code-editor');
-  if(pw){pw.innerHTML='';pr.forEach(function(p){pw.appendChild(prRow(p.code||'',p.type||'fixed',p.value||'',p.label||''));});}
-}
-function collectTownshipPromo(){
-  var tw={};
-  document.querySelectorAll('#township-fee-editor>div').forEach(function(r){
-    var n=r.querySelector('.tw-n').value.trim();
-    var f=parseInt(r.querySelector('.tw-f').value)||0;
-    if(n)tw[n]=f;
-  });
-  document.getElementById('st-township_fees').value=JSON.stringify(tw);
-  var pr=[];
-  document.querySelectorAll('#promo-code-editor>div').forEach(function(r){
-    var c=r.querySelector('.pr-c').value.trim().toUpperCase();
-    var t=r.querySelector('.pr-t').value;
-    var v=parseInt(r.querySelector('.pr-v').value)||0;
-    var l=r.querySelector('.pr-l').value.trim();
-    if(c)pr.push({code:c,type:t,value:v,label:l});
-  });
-  document.getElementById('st-promo_codes').value=JSON.stringify(pr);
-}
 </script>
 </body>
 </html>

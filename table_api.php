@@ -9,6 +9,10 @@
  * POST ?action=open_table           → admin opens new session for table
  */
 declare(strict_types=1);
+
+require_once __DIR__ . '/db_connect.php';
+$pdo = getPDO();
+
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -16,8 +20,7 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
-define('DB_HOST','localhost'); define('DB_PORT','3306');
-define('DB_NAME','noodlehaus'); define('DB_USER','root'); define('DB_PASS','');
+
 
 function db(): PDO {
     static $pdo = null;
