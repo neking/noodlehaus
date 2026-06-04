@@ -62,7 +62,7 @@ if ($action === 'profile' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $profile = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // loyalty card (existing table — read only)
-    $loy = $pdo->prepare("SELECT stamps, total_redeemed FROM loyalty_cards WHERE phone = ?");
+    $loy = $pdo->prepare("SELECT stamps, total_redeemed FROM loyalty_cards WHERE phone COLLATE utf8mb4_unicode_ci = ?");
     $loy->execute([$phone]);
     $loyalty = $loy->fetch(PDO::FETCH_ASSOC) ?: ['stamps' => 0, 'total_redeemed' => 0];
 
@@ -121,7 +121,7 @@ if ($action === 'list' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $params = [];
 
     if ($search) {
-        $where[]  = '(c.phone LIKE ? OR c.name LIKE ?)';
+        $where[]  = '(c.phone LIKE ? COLLATE utf8mb4_unicode_ci OR c.name LIKE ? COLLATE utf8mb4_unicode_ci)';
         $params[] = "%$search%";
         $params[] = "%$search%";
     }
@@ -141,7 +141,7 @@ if ($action === 'list' && $_SERVER['REQUEST_METHOD'] === 'GET') {
                lc.stamps,
                lc.total_redeemed
         FROM   customers c
-        LEFT JOIN loyalty_cards lc ON lc.phone = c.phone
+        LEFT JOIN loyalty_cards lc ON lc.phone COLLATE utf8mb4_unicode_ci = c.phone
         WHERE  $whereSQL
         ORDER  BY c.last_order_at DESC, c.total_spent DESC
         LIMIT  $per OFFSET $offset
