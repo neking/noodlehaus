@@ -51,8 +51,12 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Static assets — cache first
-  if (e.request.method === 'GET') {
+  // API calls — network first, cache fallback
+  const isApi = url.pathname.includes('.php');
+  const isStatic = ['.html','.js','.css','.json','.png','.jpg','.webp','.ico'].some(ext => url.pathname.endsWith(ext));
+
+  if (e.request.method === 'GET' && isApi) {
+    // Network first — always fresh data
     e.respondWith(
       fetch(e.request).then(res => {
         if (res.ok) {
@@ -60,8 +64,34 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
         }
         return res;
-      }).catch(() => caches.match(e.request))
+      }).catch(() => caches.match(e.request).then(cached => {
+        return cached || new Response(JSON.stringify({ok:false,msg:'Offline',items:[]}),
+          {headers:{'Content-Type':'application/json'}});
+      }))
     );
+    return;
+  }
+
+  if (e.request.method === 'GET' && isStatic) {
+    // Cache first for static — then update
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        const fetchPromise = fetch(e.request).then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+          }
+          return res;
+        });
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // Other GET — network only
+  if (e.request.method === 'GET') {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
   }
 });
 
