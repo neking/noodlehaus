@@ -1122,6 +1122,46 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
             </div>
           </div>
         </div>
+
+<!-- Split Bill Modal -->
+<div id="split-bill-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg);border-radius:14px;padding:1.5rem;max-width:360px;width:92%;position:relative">
+    <button onclick="document.getElementById('split-bill-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    <div style="font-weight:600;font-size:1rem;margin-bottom:1rem">💳 Split Bill</div>
+    <div id="split-order-info" style="font-size:.85rem;color:var(--muted);margin-bottom:1rem"></div>
+    <div style="margin-bottom:.75rem">
+      <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.4rem">Primary payment</label>
+      <select id="split-primary" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;font-size:.88rem">
+        <option value="cash">💵 Cash</option>
+        <option value="kpay">💜 KPay</option>
+        <option value="wave">🌊 Wave Pay</option>
+        <option value="cb">🏦 CB Pay</option>
+        <option value="aya">🟢 AYA Pay</option>
+        <option value="card">💳 Card</option>
+      </select>
+    </div>
+    <div style="margin-bottom:.75rem">
+      <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.4rem">Split with (optional)</label>
+      <select id="split-secondary" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;font-size:.88rem">
+        <option value="">— None (single payment) —</option>
+        <option value="cash">💵 Cash</option>
+        <option value="kpay">💜 KPay</option>
+        <option value="wave">🌊 Wave Pay</option>
+        <option value="cb">🏦 CB Pay</option>
+        <option value="aya">🟢 AYA Pay</option>
+        <option value="card">💳 Card</option>
+      </select>
+    </div>
+    <div id="split-amount-row" style="display:none;margin-bottom:1rem">
+      <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.4rem">Amount paid by secondary (Ks)</label>
+      <input type="number" id="split-amount" min="0" placeholder="0" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;font-size:.88rem">
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <button onclick="document.getElementById('split-bill-modal').style.display='none'" style="flex:1;padding:.65rem;background:#6c757d;color:#fff;border:none;border-radius:8px;cursor:pointer">Cancel</button>
+      <button onclick="confirmSplitBill()" style="flex:1;padding:.65rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">✓ Close Table</button>
+    </div>
+  </div>
+</div>
 <!-- Customer History Modal -->
         <div id="cust-history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center">
           <div style="background:var(--bg);border-radius:16px;padding:1.5rem;max-width:500px;width:95%;max-height:85vh;overflow-y:auto;position:relative">
@@ -2365,6 +2405,62 @@ async function clearKDSQueue() {
   } else { toast(d.msg || 'Error','err'); }
 }
 
+
+// ══ SPLIT BILL ══
+let _splitOrderId = null;
+let _splitTotal = 0;
+
+function openSplitBill(orderId, total) {
+  _splitOrderId = orderId;
+  _splitTotal = total;
+  document.getElementById('split-order-info').textContent = 
+    'Order #' + String(orderId).padStart(6,'0') + ' — Total: ' + parseInt(total).toLocaleString() + ' Ks';
+  document.getElementById('split-amount-row').style.display = 'none';
+  document.getElementById('split-secondary').value = '';
+  document.getElementById('split-amount').value = '';
+  document.getElementById('split-bill-modal').style.display = 'flex';
+}
+
+document.addEventListener('change', function(e) {
+  if (e.target.id === 'split-secondary') {
+    document.getElementById('split-amount-row').style.display = e.target.value ? 'block' : 'none';
+    if (e.target.value) {
+      document.getElementById('split-amount').placeholder = 
+        'e.g. ' + Math.round(_splitTotal / 2).toLocaleString();
+    }
+  }
+});
+
+async function confirmSplitBill() {
+  const primary  = document.getElementById('split-primary').value;
+  const secondary = document.getElementById('split-secondary').value;
+  const amount   = parseFloat(document.getElementById('split-amount').value) || 0;
+
+  if (secondary && amount <= 0) {
+    toast('Secondary payment amount ထည့်ပါ', 'err'); return;
+  }
+  if (secondary && amount > _splitTotal) {
+    toast('Amount သည် total ထက် မကျော်ရ', 'err'); return;
+  }
+
+  const r = await fetch('table_api.php?action=close_table', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      order_id: _splitOrderId,
+      payment_method: primary,
+      split_method: secondary,
+      split_amount: amount,
+    })
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast('✅ Table closed · ' + (secondary ? primary+'+'+secondary : primary));
+    document.getElementById('split-bill-modal').style.display = 'none';
+    loadTables(); loadOrders(); loadStats();
+  } else { toast(d.msg || 'Error', 'err'); }
+}
+
 async function loadLoyaltyCards() {
   const r = await fetch('loyalty.php?action=admin_list');
   const d = await r.json();
@@ -3282,7 +3378,7 @@ function renderTablesGrid(tables) {
         </div>
         ${o.table_status!=='paid'?`
         <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:.3rem"
-          onclick="closeTable(${o.id},'${t.table_code}')">✓ Close & Mark Paid</button>
+          onclick="openSplitBill(${o.id},${o.total_amount})">💳 Split & Close</button>
         `:''}
       ` : ''}
       <button class="btn btn-ghost btn-sm" style="width:100%;font-size:.72rem"

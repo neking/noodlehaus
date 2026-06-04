@@ -106,9 +106,17 @@ if ($action === 'request_bill') {
 /* ── POST: close table / mark paid (admin) ── */
 if ($action === 'close_table') {
     if (empty($_SESSION['admin'])) jErr('Not logged in', 401);
-    $orderId = (int)($b['order_id'] ?? 0);
+    $orderId     = (int)($b['order_id'] ?? 0);
     if (!$orderId) jErr('No order_id');
-    db()->prepare("UPDATE orders SET table_status='paid', status='delivered', payment_status='paid' WHERE id=:id")
+    // Split bill support
+    $payMethod   = trim($b['payment_method'] ?? 'cash');
+    $splitMethod = trim($b['split_method'] ?? '');   // e.g. 'kpay'
+    $splitAmount = (float)($b['split_amount'] ?? 0); // amount paid by split_method
+    // Build payment_method string
+    if ($splitMethod && $splitAmount > 0) {
+        $payMethod = $payMethod . '+' . $splitMethod . ':' . $splitAmount;
+    }
+    db()->prepare("UPDATE orders SET table_status='paid', status='delivered', payment_status='paid', payment_method=:pay WHERE id=:id")
         ->execute([':id'=>$orderId]);
     // Mark KDS as served
     db()->prepare("UPDATE kds_queue SET status='served' WHERE order_id=:id AND status!='served'")

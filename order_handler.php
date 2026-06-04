@@ -55,7 +55,7 @@ foreach ($items as $i => $item) {
         if (!isset($item[$f])) jsonError("Item[{$i}] missing: {$f}");
     }
 }
-$allowed = ['kpay','wavepay','cbpay','ayapay','cod','card'];
+$allowed = ['kpay','wave','wavepay','cb','cbpay','aya','ayapay','cod','cash','card'];
 if (!in_array($paymentMethod, $allowed, true)) jsonError('Invalid payment method');
 
 try {
