@@ -181,6 +181,26 @@ setInterval(() => {
 }, 1000);
 
 
+/* ── Browser Notification ── */
+function requestNotifyPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function showOrderNotification(orderRef, customerName, items) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') { requestNotifyPermission(); return; }
+  const itemText = items?.map(i=>i.qty+'x '+i.name).join(', ') || 'New order';
+  new Notification('🍜 New Order — ' + orderRef, {
+    body: customerName + '\n' + itemText,
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    tag: orderRef,
+    renotify: true,
+  });
+}
+
 /* ── Notification Sound ── */
 function playOrderSound() {
   try {
@@ -235,6 +255,7 @@ function connect() {
     upsertTicket(o);
     updateCounts();
     playOrderSound();
+    showOrderNotification(o.order_ref, o.customer_name, o.items);
     showToast('New order: ' + o.order_ref, 'ok');
     setPill('live', 'Live');
   });
@@ -297,7 +318,12 @@ function ticketHTML(o) {
   const mins = Math.floor((Date.now() - serverTime) / 60000);
   const over = mins > 20;
   const items = (o.items || []).map(i => {
-    const mods = (i.modifiers || []).map(m => m.label || m.option_name || m).filter(Boolean);
+    const mods = (i.modifiers || []).map(m => {
+      if (typeof m === 'string') return m;
+      const lbl = m.label || m.name || m.option_name || '';
+      const price = m.price_delta || m.price_add;
+      return lbl + (price ? ' +'+price.toLocaleString()+'Ks' : '');
+    }).filter(Boolean);
     const modStr = mods.length ? `<div class="tmod">${mods.join(' · ')}</div>` : '';
     const note = i.free_text ? `<div class="tmod" style="color:#f0a500">📝 ${i.free_text}</div>` : '';
     return `<div class="titem"><span class="qty">${i.qty}</span><div><span>${i.name}</span>${modStr}${note}</div></div>`;
