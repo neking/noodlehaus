@@ -1357,6 +1357,7 @@ function showDeliveryStep() {
 async function submitOrder() {
   const name    = document.getElementById('f-name').value.trim();
   const phone   = document.getElementById('f-phone').value.trim();
+  window._savedPhone = phone;
   const address = DINE_IN ? TABLE_ID : document.getElementById('f-address').value.trim();
 
   if (!name || !phone || (!DINE_IN && !address)) {
@@ -1398,8 +1399,7 @@ async function submitOrder() {
     orderRef = data.order_id;
 
     // Loyalty stamp
-    const _loyPhoneEl = document.getElementById('cust-phone') || document.getElementById('inp-phone') || document.getElementById('f-phone');
-    const _loyPhoneVal = _loyPhoneEl?.value?.trim() || '';
+    const _loyPhoneVal = window._savedPhone || document.getElementById('f-phone')?.value?.trim() || '';
     if (_loyPhoneVal) addLoyaltyStamp(_loyPhoneVal, data.order_id);
 
     // Add to orders array

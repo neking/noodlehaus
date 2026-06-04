@@ -194,4 +194,18 @@ echo json_encode([
     'is_append'         => $isAppend,
     'estimated_minutes' => 30,
 ]);
+
+// Server-side loyalty stamp
+$customerPhone = sanitizeStr($customer['phone'] ?? '');
+if (!empty($customerPhone)) {
+    try {
+        $cfg = $pdo->query("SELECT setting_key,setting_value FROM site_settings WHERE setting_key IN ('loyalty_enabled','loyalty_stamps_required')")->fetchAll(PDO::FETCH_KEY_PAIR);
+        if (($cfg['loyalty_enabled'] ?? '1') === '1') {
+            $pdo->prepare("INSERT INTO loyalty_cards(phone,stamps,last_order_id) VALUES(?,1,?)
+                ON DUPLICATE KEY UPDATE stamps=stamps+1, last_order_id=?, updated_at=NOW()")
+                ->execute([$customerPhone, $orderId, $orderId]);
+        }
+    } catch(Exception $e) { /* stamp fail သည် order ကို မထိ */ }
+}
+
 exit;
