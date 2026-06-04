@@ -37,6 +37,7 @@ header{background:var(--panel);border-bottom:1px solid var(--border);padding:.8r
 .ttime{font-size:.75rem;color:var(--muted);}
 .tcust{padding:.4rem 1rem;font-size:.78rem;color:var(--purple);border-bottom:1px solid var(--border);}
 .titems{padding:.6rem 1rem;}
+.tmod{font-size:.72rem;color:#aaa;margin-top:1px;line-height:1.3}
 .titem{display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:1px solid #1c2128;font-size:.88rem;}
 .titem:last-child{border:none;}
 .qty{background:var(--yellow);color:#000;width:22px;height:22px;border-radius:4px;display:grid;place-items:center;font-weight:700;font-size:.78rem;flex-shrink:0;}
@@ -295,9 +296,12 @@ function ticketHTML(o) {
   const serverTime = o.time ? new Date(o.time.replace(' ','T') + 'Z') : new Date();
   const mins = Math.floor((Date.now() - serverTime) / 60000);
   const over = mins > 20;
-  const items = (o.items || []).map(i =>
-    `<div class="titem"><span class="qty">${i.qty}</span><span>${i.name}</span></div>`
-  ).join('');
+  const items = (o.items || []).map(i => {
+    const mods = (i.modifiers || []).map(m => m.label || m.option_name || m).filter(Boolean);
+    const modStr = mods.length ? `<div class="tmod">${mods.join(' · ')}</div>` : '';
+    const note = i.free_text ? `<div class="tmod" style="color:#f0a500">📝 ${i.free_text}</div>` : '';
+    return `<div class="titem"><span class="qty">${i.qty}</span><div><span>${i.name}</span>${modStr}${note}</div></div>`;
+  }).join('');
 
   // Action buttons
   let actionBtn = '';

@@ -2484,6 +2484,30 @@ async function loadAnalytics(days=7){
 }
 // ══ END ANALYTICS ══
 
+
+// ── Session timeout handler ──
+const _origFetch = window.fetch;
+window.fetch = async function(...args) {
+  const res = await _origFetch.apply(this, args);
+  if (res.status === 401) {
+    const clone = res.clone();
+    try {
+      const d = await clone.json();
+      if (d.msg === 'Not logged in' || d.msg === 'Session expired' || d.msg === 'Unauthorized') {
+        if (!document.getElementById('session-expired-banner')) {
+          const banner = document.createElement('div');
+          banner.id = 'session-expired-banner';
+          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#dc3545;color:#fff;text-align:center;padding:.75rem;font-size:.9rem;font-weight:500';
+          banner.innerHTML = '⚠️ Session expired — <a href="admin.php" style="color:#fff;text-decoration:underline">Click here to login again</a>';
+          document.body.prepend(banner);
+          setTimeout(()=>{ window.location.href = 'admin.php'; }, 3000);
+        }
+      }
+    } catch(e) {}
+  }
+  return res;
+};
+
 async function loadStats() {
   document.getElementById('dash-date').textContent =
     new Date().toLocaleDateString('en-GB', {weekday:'long',day:'numeric',month:'long'});
