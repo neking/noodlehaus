@@ -237,5 +237,16 @@ if (!empty($customerPhone)) {
     } catch(Exception $e) { /* CRM sync fail သည် order ကို မထိ */ }
 }
 
+// ── Phase 5B: Shift order assign (fire-and-forget) ──
+try {
+    $shiftCtx = stream_context_create(['http' => [
+        'method'  => 'POST',
+        'header'  => 'Content-Type: application/json',
+        'content' => json_encode(['order_id' => $orderId]),
+        'timeout' => 2,
+    ]]);
+    @file_get_contents('http://localhost/shift_api.php?action=assign_order', false, $shiftCtx);
+} catch(Exception $e) { /* shift assign fail သည် order ကို မထိ */ }
+
 exit;
 
