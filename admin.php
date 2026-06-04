@@ -2270,7 +2270,7 @@ function showPage(page) {
     const mb = document.getElementById('mnav-'+p);
     if (mb) mb.classList.toggle('active', p===page);
   });
-  if (page==='dashboard') { loadStats(); loadOrders(); }
+  if (page==='dashboard') { loadStats(); loadOrders(); loadAnalytics(7); }
   if (page==='menu')      { loadMenuItems(); }
   if (page==='orders')    { loadOrders(); }
   if (page==='settings')  { loadSettings(); }
