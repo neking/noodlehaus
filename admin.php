@@ -1158,7 +1158,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     </div>
     <div style="display:flex;gap:.5rem">
       <button onclick="document.getElementById('split-bill-modal').style.display='none'" style="flex:1;padding:.65rem;background:#6c757d;color:#fff;border:none;border-radius:8px;cursor:pointer">Cancel</button>
-      <button onclick="confirmSplitBill()" style="flex:1;padding:.65rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">✓ Close Table</button>
+      <button onclick="openSplitBill(${o.id},${o.total_amount})" style="flex:1;padding:.65rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">💳 Split & Close</button>
     </div>
   </div>
 </div>
