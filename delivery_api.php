@@ -241,13 +241,13 @@ if ($action === 'stats') {
 
 
 /* ── WEBHOOK (external platforms) ── */
-if ($action === 'webhook' && \$_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($action === 'webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // API key validation — set in site_settings or env
-    \$apiKey = trim(\$_SERVER['HTTP_X_API_KEY'] ?? \$_GET['api_key'] ?? '');
-    \$validKey = 'nh_webhook_' . md5('noodlehaus_secret_2026');
-    if (\$apiKey !== \$validKey) fail('Invalid API key', 403);
+    $apiKey = trim($_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '');
+    $validKey = 'nh_webhook_' . md5('noodlehaus_secret_2026');
+    if ($apiKey !== $validKey) fail('Invalid API key', 403);
 
-    \$d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
     $platform = trim($d['platform'] ?? 'external');
     $extId    = trim($d['external_id'] ?? '');
     $name     = trim($d['customer_name'] ?? 'External Customer');
