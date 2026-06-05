@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>NoodleHaus — Self-Service Kiosk</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#faf8f5;--surface:#fff;--surface2:#f2efe9;
+  --accent:#e84c2b;--accent2:#ff6b3d;--green:#27ae60;
+  --text:#1a1a1a;--muted:#888;--border:#e8e4dc;
+  --ink:#2a2520;--paper:#faf8f5;
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden;height:100vh;touch-action:manipulation}
+
+/* Layout: left menu + right cart */
+.layout{display:grid;grid-template-columns:1fr 360px;height:100vh}
+
+/* ── HEADER ── */
+.menu-area{display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;background:var(--ink);color:#fff}
+.header .logo{font-size:1.4rem;font-weight:800}
+.header .logo span{color:var(--accent)}
+.header .table-badge{background:var(--accent);padding:.4rem 1rem;border-radius:20px;font-weight:700;font-size:.9rem}
+
+/* ── CATEGORIES ── */
+.cats{display:flex;gap:.5rem;padding:.8rem 1.5rem;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.cats::-webkit-scrollbar{display:none}
+.cat-btn{padding:.5rem 1.2rem;border-radius:20px;border:2px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s}
+.cat-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ── MENU GRID ── */
+.menu-scroll{flex:1;overflow-y:auto;padding:1rem 1.5rem}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem}
+.menu-card{
+  background:var(--surface);border-radius:16px;overflow:hidden;cursor:pointer;
+  border:2px solid transparent;transition:all .2s;
+  display:flex;flex-direction:column;
+}
+.menu-card:active{transform:scale(.97)}
+.menu-card.in-cart{border-color:var(--accent)}
+.menu-card .img{height:120px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:3rem}
+.menu-card .img img{width:100%;height:100%;object-fit:cover}
+.menu-card .info{padding:.8rem;flex:1;display:flex;flex-direction:column}
+.menu-card .name{font-weight:700;font-size:.9rem;margin-bottom:.3rem}
+.menu-card .price{color:var(--accent);font-weight:800;font-size:1rem;margin-top:auto}
+.menu-card .stock-low{font-size:.72rem;color:#f39c12;margin-top:.2rem}
+.menu-card .out{opacity:.5;pointer-events:none}
+
+/* ── CART SIDEBAR ── */
+.cart{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh}
+.cart-header{padding:1.2rem;border-bottom:1px solid var(--border);font-weight:800;font-size:1.1rem;display:flex;align-items:center;gap:.5rem}
+.cart-items{flex:1;overflow-y:auto;padding:1rem}
+.cart-empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.cart-empty .icon{font-size:3rem;margin-bottom:.5rem}
+
+.cart-item{display:flex;align-items:center;gap:.8rem;padding:.8rem 0;border-bottom:1px solid var(--border)}
+.cart-item .emoji{font-size:1.5rem}
+.cart-item .details{flex:1}
+.cart-item .item-name{font-weight:600;font-size:.88rem}
+.cart-item .item-price{color:var(--muted);font-size:.82rem}
+.cart-item .qty-controls{display:flex;align-items:center;gap:.5rem}
+.qty-btn{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);background:var(--surface);color:var(--text);font-size:1.2rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.qty-btn:active{background:var(--ink);color:#fff}
+.cart-item .qty{font-weight:800;font-size:1rem;min-width:24px;text-align:center}
+
+.cart-footer{padding:1.2rem;border-top:1px solid var(--border);background:var(--surface2)}
+.cart-total{display:flex;justify-content:space-between;font-weight:800;font-size:1.2rem;margin-bottom:1rem}
+.order-btn{
+  width:100%;padding:1rem;border:none;border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;font-size:1.1rem;font-weight:800;cursor:pointer;
+  transition:transform .15s;
+}
+.order-btn:active{transform:scale(.97)}
+.order-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── ORDER CONFIRMATION OVERLAY ── */
+.confirm-overlay{
+  display:none;position:fixed;inset:0;z-index:9000;
+  background:rgba(0,0,0,.7);
+  flex-direction:column;align-items:center;justify-content:center;
+}
+.confirm-overlay.show{display:flex}
+.confirm-card{
+  background:var(--surface);border-radius:24px;padding:3rem;text-align:center;
+  max-width:450px;width:90%;animation:popIn .4s ease-out;
+}
+.confirm-card .check{font-size:4rem;margin-bottom:1rem}
+.confirm-card h2{font-size:1.5rem;margin-bottom:.5rem}
+.confirm-card .order-num{font-size:2rem;font-weight:800;color:var(--accent);margin:.8rem 0}
+.confirm-card .sub{color:var(--muted);font-size:.95rem;margin-bottom:1.5rem}
+.confirm-card .new-order-btn{
+  padding:1rem 2rem;border:none;border-radius:14px;
+  background:var(--ink);color:#fff;font-size:1.1rem;font-weight:700;cursor:pointer;
+}
+@keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ── PAYMENT SELECTION ── */
+.pay-overlay{display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.6)}
+.pay-overlay.show{display:flex;align-items:center;justify-content:center}
+.pay-card{background:var(--surface);border-radius:20px;padding:2rem;max-width:400px;width:90%}
+.pay-card h3{font-size:1.1rem;font-weight:700;margin-bottom:1rem;text-align:center}
+.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.pay-option{
+  padding:1rem;border:2px solid var(--border);border-radius:14px;
+  text-align:center;cursor:pointer;transition:all .15s;font-weight:600;
+}
+.pay-option:active,.pay-option.selected{border-color:var(--accent);background:rgba(232,76,43,.08)}
+.pay-option .icon{font-size:1.5rem;margin-bottom:.3rem}
+
+@media(max-width:800px){
+  .layout{grid-template-columns:1fr}
+  .cart{position:fixed;bottom:0;left:0;right:0;height:auto;max-height:50vh;border-left:none;border-top:1px solid var(--border);z-index:100;border-radius:20px 20px 0 0}
+  .menu-scroll{padding-bottom:80px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- LEFT: Menu -->
+  <div class="menu-area">
+    <div class="header">
+      <div class="logo">🍜 <span>NoodleHaus</span></div>
+      <div class="table-badge" id="k-table">Table —</div>
+    </div>
+    <div class="cats" id="k-cats"></div>
+    <div class="menu-scroll">
+      <div class="menu-grid" id="k-menu"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Cart -->
+  <div class="cart">
+    <div class="cart-header">🛒 Your Order <span id="k-cart-count" style="margin-left:auto;background:var(--accent);color:#fff;padding:.2rem .6rem;border-radius:12px;font-size:.8rem">0</span></div>
+    <div class="cart-items" id="k-cart-items">
+      <div class="cart-empty"><div class="icon">👆</div>Tap items to add</div>
+    </div>
+    <div class="cart-footer">
+      <div class="cart-total"><span>Total</span><span id="k-total">0 MMK</span></div>
+      <button class="order-btn" id="k-order-btn" onclick="kShowPay()" disabled>Place Order →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Selection -->
+<div class="pay-overlay" id="k-pay-overlay">
+  <div class="pay-card">
+    <h3>💳 Payment Method</h3>
+    <div class="pay-grid">
+      <div class="pay-option" onclick="kSelectPay('kpay')"><div class="icon">💜</div>KPay</div>
+      <div class="pay-option" onclick="kSelectPay('wave')"><div class="icon">🌊</div>Wave</div>
+      <div class="pay-option" onclick="kSelectPay('cb')"><div class="icon">🏦</div>CB Pay</div>
+      <div class="pay-option" onclick="kSelectPay('cash')"><div class="icon">💵</div>Cash</div>
+      <div class="pay-option" onclick="kSelectPay('card')"><div class="icon">💳</div>Card</div>
+      <div class="pay-option" onclick="kSelectPay('aya')"><div class="icon">🏧</div>AYA Pay</div>
+    </div>
+    <button onclick="document.getElementById('k-pay-overlay').classList.remove('show')"
+      style="margin-top:1rem;width:100%;padding:.7rem;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font-weight:600">Cancel</button>
+  </div>
+</div>
+
+<!-- Order Confirmation -->
+<div class="confirm-overlay" id="k-confirm">
+  <div class="confirm-card">
+    <div class="check">✅</div>
+    <h2>Order Placed!</h2>
+    <div class="order-num" id="k-order-num">NH-000000</div>
+    <div class="sub">Your order is being prepared. Please wait at your table.</div>
+    <button class="new-order-btn" onclick="kReset()">🍽️ New Order</button>
+  </div>
+</div>
+
+<script>
+/* ══ CONFIG ══ */
+const TABLE = new URLSearchParams(location.search).get('table') || '';
+let menu = [], cart = {}, categories = [];
+
+/* ══ INIT ══ */
+async function init() {
+  document.getElementById('k-table').textContent = TABLE ? `🪑 ${TABLE}` : 'Walk-in';
+  try {
+    const r = await fetch('menu_api.php');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.message);
+    menu = d.items.filter(i => i.stock > 0);
+    categories = [...new Set(menu.map(i => i.cat))];
+    renderCats();
+    renderMenu();
+  } catch(e) {
+    document.getElementById('k-menu').innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:#e74c3c">${e.message}</div>`;
+  }
+}
+
+/* ══ CATEGORIES ══ */
+let activeCat = 'All';
+function renderCats() {
+  const el = document.getElementById('k-cats');
+  el.innerHTML = `<button class="cat-btn active" onclick="filterCat('All')">All</button>` +
+    categories.map(c => `<button class="cat-btn" onclick="filterCat('${esc(c)}')">${esc(c)}</button>`).join('');
+}
+function filterCat(cat) {
+  activeCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b.textContent === cat));
+  renderMenu();
+}
+
+/* ══ MENU ══ */
+function renderMenu() {
+  const items = activeCat === 'All' ? menu : menu.filter(i => i.cat === activeCat);
+  document.getElementById('k-menu').innerHTML = items.map(item => {
+    const inCart = !!cart[item.id];
+    const imgHtml = item.image_path
+      ? `<img src="uploads/${item.image_path}" alt="" loading="lazy">`
+      : item.emoji || '🍽️';
+    return `
+    <div class="menu-card ${inCart ? 'in-cart' : ''}" onclick="addToCart(${item.id})">
+      <div class="img">${imgHtml}</div>
+      <div class="info">
+        <div class="name">${esc(item.name)}</div>
+        ${item.stock <= 5 ? `<div class="stock-low">Only ${item.stock} left</div>` : ''}
+        <div class="price">${Number(item.price).toLocaleString()} MMK</div>
+      </div>
+      ${inCart ? `<div style="background:var(--accent);color:#fff;text-align:center;padding:.3rem;font-weight:700;font-size:.85rem">× ${cart[item.id].qty} in cart</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ══ CART ══ */
+function addToCart(id) {
+  const item = menu.find(i => i.id === id);
+  if (!item) return;
+  if (cart[id]) {
+    if (cart[id].qty < item.stock) cart[id].qty++;
+  } else {
+    cart[id] = { ...item, qty: 1 };
+  }
+  renderCart();
+  renderMenu();
+}
+
+function changeQty(id, delta) {
+  if (!cart[id]) return;
+  cart[id].qty += delta;
+  if (cart[id].qty <= 0) delete cart[id];
+  renderCart();
+  renderMenu();
+}
+
+function renderCart() {
+  const items = Object.values(cart);
+  const el = document.getElementById('k-cart-items');
+  const countEl = document.getElementById('k-cart-count');
+  const totalEl = document.getElementById('k-total');
+  const btn = document.getElementById('k-order-btn');
+
+  countEl.textContent = items.reduce((s, i) => s + i.qty, 0);
+
+  if (!items.length) {
+    el.innerHTML = '<div class="cart-empty"><div class="icon">👆</div>Tap items to add</div>';
+    totalEl.textContent = '0 MMK';
+    btn.disabled = true;
+    return;
+  }
+
+  const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+  totalEl.textContent = Number(total).toLocaleString() + ' MMK';
+  btn.disabled = false;
+
+  el.innerHTML = items.map(i => `
+    <div class="cart-item">
+      <span class="emoji">${i.emoji}</span>
+      <div class="details">
+        <div class="item-name">${esc(i.name)}</div>
+        <div class="item-price">${Number(i.price).toLocaleString()} MMK</div>
+      </div>
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="changeQty(${i.id},-1)">−</button>
+        <span class="qty">${i.qty}</span>
+        <button class="qty-btn" onclick="changeQty(${i.id},+1)">+</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ══ PAYMENT ══ */
+function kShowPay() {
+  if (!Object.keys(cart).length) return;
+  document.getElementById('k-pay-overlay').classList.add('show');
+}
+
+async function kSelectPay(method) {
+  document.getElementById('k-pay-overlay').classList.remove('show');
+  const btn = document.getElementById('k-order-btn');
+  btn.textContent = 'Placing order...';
+  btn.disabled = true;
+
+  const items = Object.values(cart).map(i => ({
+    item_id: i.id,
+    name: i.name,
+    price: i.price,
+    qty: i.qty,
+    subtotal: i.price * i.qty,
+    modifiers: [],
+  }));
+  const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
+
+  try {
+    const r = await fetch('order_handler.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        device_id: 'kiosk-' + (TABLE || 'walkin'),
+        order_type: TABLE ? 'dine_in' : 'takeaway',
+        table_id: TABLE || '',
+        customer: { name: 'Kiosk Guest', phone: '', address: '', township: '', city: '', notes: '' },
+        payment_method: method,
+        items,
+        subtotal,
+        delivery_fee: 0,
+        promo_code: '',
+        discount: 0,
+        total: subtotal,
+      }),
+    });
+    const d = await r.json();
+    if (!d.success) throw new Error(d.message || 'Order failed');
+
+    // Show confirmation
+    document.getElementById('k-order-num').textContent = d.order_id;
+    document.getElementById('k-confirm').classList.add('show');
+
+    // Auto-reset after 15 sec
+    setTimeout(kReset, 15000);
+  } catch (e) {
+    alert('❌ ' + e.message);
+    btn.textContent = 'Place Order →';
+    btn.disabled = false;
+  }
+}
+
+/* ══ RESET ══ */
+function kReset() {
+  cart = {};
+  document.getElementById('k-confirm').classList.remove('show');
+  document.getElementById('k-order-btn').textContent = 'Place Order →';
+  document.getElementById('k-order-btn').disabled = true;
+  renderCart();
+  renderMenu();
+  init(); // Refresh menu stock
+}
+
+/* ══ HELPERS ══ */
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ══ FULLSCREEN on double-tap ══ */
+document.body.addEventListener('dblclick', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+});
+
+/* ══ START ══ */
+init();
+</script>
+</body>
+</html>
