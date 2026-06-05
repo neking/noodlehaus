@@ -248,5 +248,24 @@ try {
     @file_get_contents('http://localhost/shift_api.php?action=assign_order', false, $shiftCtx);
 } catch(Exception $e) { /* shift assign fail သည် order ကို မထိ */ }
 
+// ── Phase 5E: Stock auto-deduct (fire-and-forget) ──
+try {
+    $stockItems = [];
+    foreach ($items as $item) {
+        $stockItems[] = [
+            'item_id' => (int)$item['item_id'],
+            'name'    => sanitizeStr($item['name'] ?? ''),
+            'qty'     => (int)$item['qty'],
+        ];
+    }
+    $stockCtx = stream_context_create(['http' => [
+        'method'  => 'POST',
+        'header'  => 'Content-Type: application/json',
+        'content' => json_encode(['order_id' => $orderId, 'items' => $stockItems]),
+        'timeout' => 2,
+    ]]);
+    @file_get_contents('http://localhost/stock_api.php?action=order_deduct', false, $stockCtx);
+} catch(Exception $e) { /* stock deduct fail သည် order ကို မထိ */ }
+
 exit;
 
