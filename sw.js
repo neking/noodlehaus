@@ -1,5 +1,5 @@
-const CACHE_NAME = 'noodlehaus-v20260604';
-const STATIC_CACHE = 'noodlehaus-static-v20260604';
+const CACHE_NAME = 'noodlehaus-v20260605';
+const STATIC_CACHE = 'noodlehaus-static-v20260605';
 const QUEUE_DB = 'noodlehaus-queue';
 
 // Cache မည့် files
@@ -152,3 +152,4 @@ async function syncOfflineOrders() {
   const clients = await self.clients.matchAll();
   clients.forEach(c => c.postMessage({type: 'SYNC_COMPLETE'}));
 }
+
