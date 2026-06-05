@@ -1053,6 +1053,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('shift')" id="nav-shift">
         <span class="nav-icon">🕐</span> Shifts
       </div>
+      <div class="nav-item" onclick="showPage('delivery')" id="nav-delivery">
+        <span class="nav-icon">🛵</span> Delivery
+      </div>
       <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
         <span class="nav-icon">🏢</span> Branches
       </div>
@@ -1706,6 +1709,37 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <button onclick="document.getElementById('crm-modal').style.display='none'"
           style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">✕</button>
         <div id="crm-modal-body">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ── DELIVERY PAGE ── -->
+    <div id="page-delivery" style="display:none">
+      <div class="page-head">
+        <h1 class="page-title">🛵 Delivery Management</h1>
+      </div>
+
+      <!-- Drivers Strip -->
+      <div class="card" style="padding:1rem;margin-bottom:1rem">
+        <div style="font-weight:700;margin-bottom:.6rem">🧑‍✈️ Drivers</div>
+        <div id="dlv-drivers" style="display:flex;gap:.8rem;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- Two columns: Pending + Active -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <!-- Pending -->
+        <div class="card" style="padding:0">
+          <div style="padding:1rem;font-weight:700;border-bottom:1px solid var(--border)">📋 Unassigned Orders</div>
+          <div id="dlv-pending" style="padding:.8rem;max-height:500px;overflow-y:auto">
+            <div style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</div>
+          </div>
+        </div>
+        <!-- Active -->
+        <div class="card" style="padding:0">
+          <div style="padding:1rem;font-weight:700;border-bottom:1px solid var(--border)">🛵 Active Deliveries</div>
+          <div id="dlv-active" style="padding:.8rem;max-height:500px;overflow-y:auto">
+            <div style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2578,6 +2612,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <button class="mnav-btn" id="mnav-shift" onclick="showPage('shift')">
       <span class="mnav-icon">🕐</span>Shifts
     </button>
+    <button class="mnav-btn" id="mnav-delivery" onclick="showPage('delivery')">
+      <span class="mnav-icon">🛵</span>Delivery
+    </button>
     <button class="mnav-btn" id="mnav-branches" onclick="showPage('branches')">
       <span class="mnav-icon">🏢</span>Branches
     </button>
@@ -2704,7 +2741,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -2721,6 +2758,7 @@ function showPage(page) {
   if (page==='stock')      { stockLoad(); }
   if (page==='reserve')    { resLoad(); }
   if (page==='branches')   { branchLoad(); }
+  if (page==='delivery')   { dlvLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
@@ -4566,6 +4604,94 @@ async function crmSaveTag(phone) {
     document.getElementById('crm-modal').style.display = 'none';
     crmLoadCustomers();
   } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+/* ═══════════════════════════════════════
+   DELIVERY
+═══════════════════════════════════════ */
+let _dlvDrivers = [];
+
+async function dlvLoad() {
+  try {
+    const [dr, pe, ac] = await Promise.all([
+      fetch('delivery_api.php?action=drivers').then(r=>r.json()),
+      fetch('delivery_api.php?action=pending_orders').then(r=>r.json()),
+      fetch('delivery_api.php?action=active').then(r=>r.json()),
+    ]);
+    if (dr.ok) { _dlvDrivers = dr.drivers; dlvRenderDrivers(dr.drivers); }
+    if (pe.ok) dlvRenderPending(pe.orders);
+    if (ac.ok) dlvRenderActive(ac.deliveries);
+  } catch(e) {}
+}
+
+function dlvRenderDrivers(drivers) {
+  const el = document.getElementById('dlv-drivers');
+  const statusColor = {available:'#27ae60',busy:'#e84c2b',offline:'#666'};
+  const vehicleIcon = {motorbike:'🛵',bicycle:'🚲',car:'🚗',foot:'🚶'};
+  el.innerHTML = drivers.map(d => `
+    <div style="background:var(--surface2);border-radius:10px;padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;min-width:140px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${statusColor[d.status]}"></span>
+      <span>${vehicleIcon[d.vehicle]||'🛵'}</span>
+      <span style="font-weight:600;font-size:.85rem">${escHtml(d.name)}</span>
+      <span style="font-size:.72rem;color:var(--text-muted)">${d.active_orders>0?'('+d.active_orders+')':''}</span>
+    </div>
+  `).join('');
+}
+
+function dlvRenderPending(orders) {
+  const el = document.getElementById('dlv-pending');
+  if (!orders.length) { el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-muted)">No pending deliveries</div>'; return; }
+  const availDrivers = _dlvDrivers.filter(d => d.status === 'available' || d.status === 'busy');
+  const driverOpts = availDrivers.map(d => `<option value="${d.id}">${escHtml(d.name)}</option>`).join('');
+  el.innerHTML = orders.map(o => `
+    <div style="background:var(--surface2);border-radius:10px;padding:.8rem;margin-bottom:.6rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.4rem">
+        <span style="font-weight:700">NH-${String(o.id).padStart(6,'0')}</span>
+        <span style="font-weight:600;color:var(--green)">${Number(o.total_amount).toLocaleString()} MMK</span>
+      </div>
+      <div style="font-size:.85rem;font-weight:600">${escHtml(o.customer_name)}</div>
+      <div style="font-size:.8rem;color:var(--text-muted)">${escHtml(o.customer_phone)} · ${o.payment_method}</div>
+      <div style="display:flex;gap:.5rem;margin-top:.6rem;align-items:center">
+        <select id="dlv-assign-${o.id}" style="flex:1;padding:.4rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.82rem">
+          <option value="">Select driver</option>${driverOpts}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="dlvAssign(${o.id})" style="padding:.4rem .8rem;font-size:.82rem">Assign</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function dlvRenderActive(deliveries) {
+  const el = document.getElementById('dlv-active');
+  if (!deliveries.length) { el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-muted)">No active deliveries</div>'; return; }
+  const statusBadge = {assigned:'📋 Assigned',picked_up:'📦 Picked Up',on_the_way:'🛵 On The Way'};
+  const statusColor = {assigned:'#f39c12',picked_up:'#e84c2b',on_the_way:'#3498db'};
+  el.innerHTML = deliveries.map(d => `
+    <div style="background:var(--surface2);border-radius:10px;padding:.8rem;margin-bottom:.6rem;border-left:3px solid ${statusColor[d.status]||'var(--border)'}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+        <span style="font-weight:700">NH-${String(d.order_id).padStart(6,'0')}</span>
+        <span style="font-size:.78rem;color:${statusColor[d.status]};font-weight:600">${statusBadge[d.status]||d.status}</span>
+      </div>
+      <div style="font-size:.85rem">${escHtml(d.customer_name)} → <strong>${escHtml(d.driver_name)}</strong> ${d.vehicle==='motorbike'?'🛵':'🚲'}</div>
+      <div style="font-size:.78rem;color:var(--text-muted)">${Number(d.total_amount).toLocaleString()} MMK · ${d.payment_method}</div>
+    </div>
+  `).join('');
+}
+
+async function dlvAssign(orderId) {
+  const sel = document.getElementById('dlv-assign-' + orderId);
+  const driverId = parseInt(sel?.value);
+  if (!driverId) { toast('Driver ရွေးပါ','err'); return; }
+  try {
+    const r = await fetch('delivery_api.php?action=assign', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({order_id: orderId, driver_id: driverId})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    toast(`✅ Assigned to ${d.driver_name}`);
+    dlvLoad();
+  } catch(e) { toast('❌ '+e.message,'err'); }
 }
 
 /* ═══════════════════════════════════════
