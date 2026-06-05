@@ -4,18 +4,19 @@
  * Endpoint: /delivery_api.php?action=...
  *
  * Actions:
- *   GET  pending_orders   — unassigned delivery orders
- *   GET  active           — currently active deliveries
- *   POST assign           — assign driver to order
- *   POST update_status    — driver updates delivery status
- *   GET  drivers          — all drivers
- *   POST driver_login     — driver PIN login
- *   POST driver_status    — driver set available/offline
- *   GET  driver_orders    — driver's assigned orders
- *   GET  zones            — delivery zones + fees
- *   POST zone_save        — create/update zone
- *   POST driver_save      — create/update driver
- *   GET  analytics        — delivery stats
+ *   GET  drivers         — driver list
+ *   POST driver_create   — new driver
+ *   POST driver_status   — update driver status
+ *   GET  zones           — delivery zones
+ *   POST zone_save       — create/update zone
+ *   GET  active          — active delivery orders
+ *   POST assign          — assign driver to order
+ *   POST update_status   — driver updates delivery status
+ *   POST auto_track      — order_handler hook: create tracking for delivery orders
+ *   GET  driver_orders   — driver's current assignments (driver app)
+ *   POST driver_login    — driver PIN login
+ *   GET  stats           — delivery stats
+ *   POST webhook         — external platform push orders
  */
 
 declare(strict_types=1);
@@ -45,125 +46,127 @@ function requireAdmin(): void {
 }
 
 
-/* ════════════════════════════════════════════════════════════════
-   GET  pending_orders — delivery orders not yet assigned
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'pending_orders') {
+/* ── DRIVERS ── */
+if ($action === 'drivers') {
     $rows = $pdo->query("
-        SELECT o.id, o.customer_name, o.customer_phone,
-               o.total_amount, o.payment_method, o.status,
-               o.created_at, o.special_notes,
-               SUBSTRING_INDEX(o.customer_phone, '', 1) AS address_hint
-        FROM orders o
-        LEFT JOIN delivery_assignments da ON da.order_id = o.id
-        WHERE o.order_type = 'delivery'
-          AND o.deleted_at IS NULL
-          AND o.status NOT IN ('delivered','cancelled')
-          AND da.id IS NULL
-        ORDER BY o.created_at ASC
+        SELECT d.*,
+            (SELECT COUNT(*) FROM delivery_tracking dt WHERE dt.driver_id=d.id AND dt.status NOT IN ('delivered','cancelled')) AS active_orders
+        FROM drivers d WHERE d.is_active=1 ORDER BY d.status='available' DESC, d.name
     ")->fetchAll(PDO::FETCH_ASSOC);
-    ok(['orders' => $rows]);
+    ok(['drivers' => $rows]);
 }
 
-
-/* ════════════════════════════════════════════════════════════════
-   GET  active — current active deliveries
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'active') {
-    $rows = $pdo->query("
-        SELECT da.*, o.customer_name, o.customer_phone,
-               o.total_amount, o.payment_method, o.created_at AS order_time,
-               d.name AS driver_name, d.phone AS driver_phone, d.vehicle
-        FROM delivery_assignments da
-        JOIN orders o ON o.id = da.order_id
-        JOIN drivers d ON d.id = da.driver_id
-        WHERE da.status NOT IN ('delivered','failed')
-          AND o.deleted_at IS NULL
-        ORDER BY da.assigned_at DESC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-    ok(['deliveries' => $rows]);
-}
-
-
-/* ════════════════════════════════════════════════════════════════
-   POST assign  { order_id, driver_id }
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'assign' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($action === 'driver_create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireAdmin();
     $d = json_decode(file_get_contents('php://input'), true) ?? [];
-    $orderId  = (int)($d['order_id']  ?? 0);
-    $driverId = (int)($d['driver_id'] ?? 0);
-    if (!$orderId || !$driverId) fail('order_id and driver_id required');
+    $name = trim($d['name'] ?? ''); $phone = trim($d['phone'] ?? '');
+    $vehicle = trim($d['vehicle_type'] ?? 'motorbike');
+    $pin = trim($d['pin'] ?? '');
+    if (!$name || !$phone) fail('Name and phone required');
+    $pdo->prepare("INSERT INTO drivers (name,phone,vehicle_type,pin) VALUES (?,?,?,?)")
+        ->execute([$name,$phone,$vehicle,$pin?:null]);
+    ok(['driver_id' => (int)$pdo->lastInsertId()]);
+}
 
-    // Check order exists and is delivery
-    $order = $pdo->prepare("SELECT id FROM orders WHERE id=? AND order_type='delivery' AND deleted_at IS NULL");
-    $order->execute([$orderId]);
-    if (!$order->fetchColumn()) fail('Order not found or not delivery');
+if ($action === 'driver_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = (int)($d['id'] ?? 0); $status = trim($d['status'] ?? '');
+    if (!$id || !in_array($status, ['available','busy','offline'])) fail('Invalid');
+    $pdo->prepare("UPDATE drivers SET status=? WHERE id=?")->execute([$status,$id]);
+    ok();
+}
 
-    // Check driver available
-    $driver = $pdo->prepare("SELECT name FROM drivers WHERE id=? AND is_active=1");
-    $driver->execute([$driverId]);
-    $driverName = $driver->fetchColumn();
-    if (!$driverName) fail('Driver not available');
 
-    // Check not already assigned
-    $exists = $pdo->prepare("SELECT id FROM delivery_assignments WHERE order_id=?");
-    $exists->execute([$orderId]);
-    if ($exists->fetchColumn()) fail('Order already assigned');
+/* ── ZONES ── */
+if ($action === 'zones') {
+    ok(['zones' => $pdo->query("SELECT * FROM delivery_zones WHERE is_active=1 ORDER BY fee")->fetchAll(PDO::FETCH_ASSOC)]);
+}
 
-    $pdo->prepare("
-        INSERT INTO delivery_assignments (order_id, driver_id) VALUES (?, ?)
-    ")->execute([$orderId, $driverId]);
+if ($action === 'zone_save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireAdmin();
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = (int)($d['id'] ?? 0);
+    $name = trim($d['zone_name'] ?? ''); $township = trim($d['township'] ?? '');
+    $fee = max(0,(int)($d['fee'] ?? 1500)); $est = max(10,(int)($d['estimated_min'] ?? 30));
+    if (!$name) fail('Zone name required');
+    if ($id) {
+        $pdo->prepare("UPDATE delivery_zones SET zone_name=?,township=?,fee=?,estimated_min=? WHERE id=?")
+            ->execute([$name,$township?:null,$fee,$est,$id]);
+    } else {
+        $pdo->prepare("INSERT INTO delivery_zones (zone_name,township,fee,estimated_min) VALUES (?,?,?,?)")
+            ->execute([$name,$township?:null,$fee,$est]);
+        $id = (int)$pdo->lastInsertId();
+    }
+    ok(['zone_id' => $id]);
+}
 
-    // Set driver busy
+
+/* ── ACTIVE DELIVERIES ── */
+if ($action === 'active') {
+    requireAdmin();
+    $rows = $pdo->prepare("
+        SELECT dt.*, o.customer_name, o.customer_phone, o.total_amount,
+               o.payment_method, o.special_notes,
+               d.name AS driver_name, d.phone AS driver_phone, d.vehicle_type,
+               GROUP_CONCAT(oi.item_name,' x',oi.qty ORDER BY oi.id SEPARATOR ', ') AS items
+        FROM delivery_tracking dt
+        JOIN orders o ON o.id = dt.order_id
+        LEFT JOIN drivers d ON d.id = dt.driver_id
+        LEFT JOIN order_items oi ON oi.order_id = o.id
+        WHERE dt.status NOT IN ('delivered','cancelled')
+          AND o.deleted_at IS NULL
+        GROUP BY dt.id
+        ORDER BY dt.created_at DESC
+    ");
+    $rows->execute();
+    ok(['deliveries' => $rows->fetchAll(PDO::FETCH_ASSOC)]);
+}
+
+
+/* ── ASSIGN DRIVER ── */
+if ($action === 'assign' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireAdmin();
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $trackingId = (int)($d['tracking_id'] ?? 0);
+    $driverId   = (int)($d['driver_id'] ?? 0);
+    if (!$trackingId || !$driverId) fail('tracking_id and driver_id required');
+
+    $pdo->prepare("UPDATE delivery_tracking SET driver_id=?, status='assigned', assigned_at=NOW() WHERE id=?")
+        ->execute([$driverId, $trackingId]);
     $pdo->prepare("UPDATE drivers SET status='busy' WHERE id=?")->execute([$driverId]);
 
-    ok(['assigned' => true, 'driver_name' => $driverName]);
+    ok(['assigned' => true]);
 }
 
 
-/* ════════════════════════════════════════════════════════════════
-   POST update_status  { order_id, status, notes }
-   ════════════════════════════════════════════════════════════════ */
+/* ── UPDATE DELIVERY STATUS (driver app) ── */
 if ($action === 'update_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $d      = json_decode(file_get_contents('php://input'), true) ?? [];
-    $orderId = (int)($d['order_id'] ?? 0);
-    $status  = trim($d['status'] ?? '');
-    $notes   = trim($d['notes']  ?? '') ?: null;
-
-    if (!$orderId) fail('order_id required');
-    $valid = ['assigned','picked_up','on_the_way','delivered','failed'];
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $trackingId = (int)($d['tracking_id'] ?? 0);
+    $status = trim($d['status'] ?? '');
+    $notes = trim($d['notes'] ?? '');
+    if (!$trackingId) fail('tracking_id required');
+    $valid = ['picked_up','delivering','delivered','cancelled'];
     if (!in_array($status, $valid)) fail('Invalid status');
 
     $timeCol = match($status) {
         'picked_up' => ', picked_up_at=NOW()',
-        'delivered' => ', delivered_at=NOW()',
-        default     => '',
+        'delivered'  => ', delivered_at=NOW()',
+        default      => '',
     };
+    $noteUpdate = $notes ? ", delivery_notes=CONCAT(IFNULL(delivery_notes,''),' | '," . $pdo->quote($notes) . ")" : '';
 
-    $pdo->prepare("
-        UPDATE delivery_assignments
-        SET status=?, notes=? $timeCol
-        WHERE order_id=?
-    ")->execute([$status, $notes, $orderId]);
+    $pdo->prepare("UPDATE delivery_tracking SET status=?{$timeCol}{$noteUpdate} WHERE id=?")
+        ->execute([$status, $trackingId]);
 
-    // If delivered, set driver available + increment counter
-    if ($status === 'delivered') {
-        $driverId = $pdo->prepare("SELECT driver_id FROM delivery_assignments WHERE order_id=?");
-        $driverId->execute([$orderId]);
+    // Free driver on delivered/cancelled
+    if (in_array($status, ['delivered','cancelled'])) {
+        $driverId = $pdo->prepare("SELECT driver_id FROM delivery_tracking WHERE id=?");
+        $driverId->execute([$trackingId]);
         $did = $driverId->fetchColumn();
         if ($did) {
             $pdo->prepare("UPDATE drivers SET status='available', total_deliveries=total_deliveries+1 WHERE id=?")
                 ->execute([$did]);
-        }
-        // Update order status
-        $pdo->prepare("UPDATE orders SET status='delivered' WHERE id=?")->execute([$orderId]);
-    }
-    if ($status === 'failed') {
-        $driverId = $pdo->prepare("SELECT driver_id FROM delivery_assignments WHERE order_id=?");
-        $driverId->execute([$orderId]);
-        $did = $driverId->fetchColumn();
-        if ($did) {
-            $pdo->prepare("UPDATE drivers SET status='available' WHERE id=?")->execute([$did]);
         }
     }
 
@@ -171,178 +174,129 @@ if ($action === 'update_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 
-/* ════════════════════════════════════════════════════════════════
-   GET  drivers
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'drivers') {
-    $rows = $pdo->query("
-        SELECT d.*,
-            (SELECT COUNT(*) FROM delivery_assignments da
-             WHERE da.driver_id=d.id AND da.status NOT IN ('delivered','failed')) AS active_orders
-        FROM drivers d
-        ORDER BY d.status ASC, d.name
-    ")->fetchAll(PDO::FETCH_ASSOC);
-    ok(['drivers' => $rows]);
+/* ── AUTO TRACK (order_handler hook) ── */
+if ($action === 'auto_track' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $orderId = (int)($d['order_id'] ?? 0);
+    if (!$orderId) fail('order_id required');
+    // Only create if not exists
+    $exists = $pdo->prepare("SELECT id FROM delivery_tracking WHERE order_id=?");
+    $exists->execute([$orderId]);
+    if ($exists->fetchColumn()) ok(['exists' => true]);
+
+    $pdo->prepare("INSERT INTO delivery_tracking (order_id) VALUES (?)")->execute([$orderId]);
+    ok(['tracking_id' => (int)$pdo->lastInsertId()]);
 }
 
 
-/* ════════════════════════════════════════════════════════════════
-   POST driver_login  { pin }
-   ════════════════════════════════════════════════════════════════ */
+/* ── DRIVER LOGIN ── */
 if ($action === 'driver_login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $d   = json_decode(file_get_contents('php://input'), true) ?? [];
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
     $pin = trim($d['pin'] ?? '');
     if (!$pin) fail('PIN required');
-
-    $driver = $pdo->prepare("SELECT id, name, phone, vehicle, status FROM drivers WHERE pin=? AND is_active=1");
+    $driver = $pdo->prepare("SELECT id,name,phone,vehicle_type FROM drivers WHERE pin=? AND is_active=1");
     $driver->execute([$pin]);
     $row = $driver->fetch(PDO::FETCH_ASSOC);
     if (!$row) fail('PIN မှားနေသည်');
-
-    // Set online
+    // Set available
     $pdo->prepare("UPDATE drivers SET status='available' WHERE id=?")->execute([$row['id']]);
-    $row['status'] = 'available';
-
     ok(['driver' => $row]);
 }
 
 
-/* ════════════════════════════════════════════════════════════════
-   POST driver_status  { driver_id, status }
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'driver_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $d = json_decode(file_get_contents('php://input'), true) ?? [];
-    $id = (int)($d['driver_id'] ?? 0);
-    $status = trim($d['status'] ?? '');
-    if (!$id || !in_array($status, ['available','offline'])) fail('Invalid');
-    $pdo->prepare("UPDATE drivers SET status=? WHERE id=?")->execute([$status, $id]);
-    ok();
-}
-
-
-/* ════════════════════════════════════════════════════════════════
-   GET  driver_orders?driver_id=X
-   ════════════════════════════════════════════════════════════════ */
+/* ── DRIVER'S ORDERS ── */
 if ($action === 'driver_orders') {
     $driverId = (int)($_GET['driver_id'] ?? 0);
     if (!$driverId) fail('driver_id required');
-
     $rows = $pdo->prepare("
-        SELECT da.*, o.customer_name, o.customer_phone,
-               o.total_amount, o.payment_method, o.special_notes,
-               o.created_at AS order_time,
-               GROUP_CONCAT(oi.item_name, ' x', oi.qty ORDER BY oi.id SEPARATOR ', ') AS items
-        FROM delivery_assignments da
-        JOIN orders o ON o.id = da.order_id
+        SELECT dt.*, o.customer_name, o.customer_phone, o.total_amount,
+               o.payment_method, o.special_notes,
+               CONCAT(IFNULL(o.customer_phone,''),' ',IFNULL(o.special_notes,'')) AS address_info,
+               GROUP_CONCAT(oi.item_name,' x',oi.qty ORDER BY oi.id SEPARATOR ', ') AS items
+        FROM delivery_tracking dt
+        JOIN orders o ON o.id = dt.order_id
         LEFT JOIN order_items oi ON oi.order_id = o.id
-        WHERE da.driver_id = ?
-          AND da.status NOT IN ('delivered','failed')
+        WHERE dt.driver_id = ? AND dt.status NOT IN ('delivered','cancelled')
           AND o.deleted_at IS NULL
-        GROUP BY da.id
-        ORDER BY da.assigned_at ASC
+        GROUP BY dt.id
+        ORDER BY dt.assigned_at ASC
     ");
     $rows->execute([$driverId]);
-
     ok(['orders' => $rows->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
 
-/* ════════════════════════════════════════════════════════════════
-   GET  zones
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'zones') {
-    $rows = $pdo->query("SELECT * FROM delivery_zones ORDER BY zone_name")->fetchAll(PDO::FETCH_ASSOC);
-    ok(['zones' => $rows]);
-}
-
-
-/* ════════════════════════════════════════════════════════════════
-   POST zone_save  { id?, zone_name, fee, estimated_min }
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'zone_save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+/* ── STATS ── */
+if ($action === 'stats') {
     requireAdmin();
-    $d    = json_decode(file_get_contents('php://input'), true) ?? [];
-    $id   = (int)($d['id'] ?? 0);
-    $name = trim($d['zone_name'] ?? '');
-    $fee  = max(0, (int)($d['fee'] ?? 1500));
-    $est  = max(10, (int)($d['estimated_min'] ?? 30));
-    if (!$name) fail('Zone name required');
-
-    if ($id) {
-        $pdo->prepare("UPDATE delivery_zones SET zone_name=?, fee=?, estimated_min=? WHERE id=?")
-            ->execute([$name, $fee, $est, $id]);
-    } else {
-        $pdo->prepare("INSERT INTO delivery_zones (zone_name, fee, estimated_min) VALUES (?,?,?)")
-            ->execute([$name, $fee, $est]);
-        $id = (int)$pdo->lastInsertId();
-    }
-    ok(['id' => $id]);
-}
-
-
-/* ════════════════════════════════════════════════════════════════
-   POST driver_save  { id?, name, phone, pin, vehicle }
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'driver_save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    requireAdmin();
-    $d     = json_decode(file_get_contents('php://input'), true) ?? [];
-    $id    = (int)($d['id'] ?? 0);
-    $name  = trim($d['name'] ?? '');
-    $phone = trim($d['phone'] ?? '');
-    $pin   = trim($d['pin'] ?? '');
-    $vehicle = trim($d['vehicle'] ?? 'motorbike');
-    if (!$name || !$phone || !$pin) fail('Name, phone, pin required');
-
-    if ($id) {
-        $pdo->prepare("UPDATE drivers SET name=?, phone=?, pin=?, vehicle=? WHERE id=?")
-            ->execute([$name, $phone, $pin, $vehicle, $id]);
-    } else {
-        $pdo->prepare("INSERT INTO drivers (name, phone, pin, vehicle) VALUES (?,?,?,?)")
-            ->execute([$name, $phone, $pin, $vehicle]);
-        $id = (int)$pdo->lastInsertId();
-    }
-    ok(['id' => $id]);
-}
-
-
-/* ════════════════════════════════════════════════════════════════
-   GET  analytics?days=7
-   ════════════════════════════════════════════════════════════════ */
-if ($action === 'analytics') {
-    requireAdmin();
-    $days = max(1, min(90, (int)($_GET['days'] ?? 7)));
-
-    $stats = $pdo->prepare("
+    $stats = $pdo->query("
         SELECT
-            COUNT(*) AS total_deliveries,
-            SUM(CASE WHEN status='delivered' THEN 1 ELSE 0 END) AS completed,
-            SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed,
-            AVG(CASE WHEN delivered_at IS NOT NULL AND picked_up_at IS NOT NULL
-                THEN TIMESTAMPDIFF(MINUTE, picked_up_at, delivered_at) END) AS avg_delivery_min
-        FROM delivery_assignments
-        WHERE assigned_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-    ");
-    $stats->execute([$days]);
-    $s = $stats->fetch(PDO::FETCH_ASSOC);
+            (SELECT COUNT(*) FROM delivery_tracking WHERE status NOT IN ('delivered','cancelled')) AS active,
+            (SELECT COUNT(*) FROM delivery_tracking WHERE status='delivered' AND DATE(delivered_at)=CURDATE()) AS today_delivered,
+            (SELECT COUNT(*) FROM drivers WHERE status='available' AND is_active=1) AS drivers_available,
+            (SELECT COUNT(*) FROM delivery_tracking WHERE status='pending') AS pending_assign
+    ")->fetch(PDO::FETCH_ASSOC);
+    ok(['stats' => $stats]);
+}
 
-    // Top drivers
-    $top = $pdo->prepare("
-        SELECT d.name, d.vehicle, COUNT(*) AS deliveries
-        FROM delivery_assignments da
-        JOIN drivers d ON d.id = da.driver_id
-        WHERE da.status = 'delivered'
-          AND da.assigned_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-        GROUP BY d.id
-        ORDER BY deliveries DESC
-        LIMIT 5
-    ");
-    $top->execute([$days]);
 
-    ok([
-        'stats'       => $s,
-        'top_drivers' => $top->fetchAll(PDO::FETCH_ASSOC),
-        'days'        => $days,
+/* ── WEBHOOK (external platforms) ── */
+if ($action === 'webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $platform = trim($d['platform'] ?? 'external');
+    $extId    = trim($d['external_id'] ?? '');
+    $name     = trim($d['customer_name'] ?? 'External Customer');
+    $phone    = trim($d['customer_phone'] ?? '');
+    $address  = trim($d['address'] ?? '');
+    $items    = $d['items'] ?? [];
+    $total    = (int)($d['total'] ?? 0);
+    $payment  = trim($d['payment_method'] ?? 'cod');
+    $notes    = trim($d['notes'] ?? '');
+
+    if (empty($items) || !$total) fail('Items and total required');
+
+    // Create order via internal flow
+    $orderItems = [];
+    foreach ($items as $item) {
+        $orderItems[] = [
+            'item_id'  => (int)($item['item_id'] ?? 0),
+            'name'     => trim($item['name'] ?? ''),
+            'price'    => (int)($item['price'] ?? 0),
+            'qty'      => max(1, (int)($item['qty'] ?? 1)),
+            'subtotal' => (int)($item['subtotal'] ?? 0),
+            'modifiers'=> [],
+        ];
+    }
+
+    $payload = json_encode([
+        'device_id'    => 'webhook-' . $platform,
+        'order_type'   => 'delivery',
+        'table_id'     => '',
+        'customer'     => ['name'=>$name,'phone'=>$phone,'address'=>$address,'township'=>'','city'=>'','notes'=>$notes.' [' . strtoupper($platform) . ($extId?" #$extId":'') . ']'],
+        'payment_method'=> $payment,
+        'items'        => $orderItems,
+        'subtotal'     => $total,
+        'delivery_fee' => 0,
+        'promo_code'   => '',
+        'discount'     => 0,
+        'total'        => $total,
     ]);
+
+    $ctx = stream_context_create(['http' => [
+        'method' => 'POST', 'header' => 'Content-Type: application/json',
+        'content' => $payload, 'timeout' => 5,
+    ]]);
+    $result = @file_get_contents('http://localhost/order_handler.php', false, $ctx);
+    $orderResult = json_decode($result ?: '{}', true);
+
+    if (!empty($orderResult['success'])) {
+        // Auto-create tracking
+        $orderId = (int)$orderResult['db_id'];
+        $pdo->prepare("INSERT IGNORE INTO delivery_tracking (order_id) VALUES (?)")->execute([$orderId]);
+        ok(['order_id' => $orderResult['order_id'], 'db_id' => $orderId, 'platform' => $platform]);
+    } else {
+        fail($orderResult['message'] ?? 'Order creation failed');
+    }
 }
 
 
