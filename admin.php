@@ -1041,6 +1041,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('tables')" id="nav-tables">
         <span class="nav-icon">🍽️</span> Tables
       </div>
+      <div class="nav-item" onclick="showPage('stock')" id="nav-stock">
+        <span class="nav-icon">📦</span> Stock
+      </div>
       <div class="nav-item" onclick="showPage('crm')" id="nav-crm">
         <span class="nav-icon">👥</span> CRM
       </div>
@@ -1350,6 +1353,102 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <div class="modal-foot">
           <button class="btn btn-ghost" onclick="document.getElementById('add-table-modal').classList.remove('open')">Cancel</button>
           <button class="btn btn-primary" onclick="saveNewTable()">Save Table</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STOCK PAGE ── -->
+    <div id="page-stock" style="display:none">
+      <div class="page-head">
+        <h1 class="page-title">📦 Stock Management</h1>
+      </div>
+
+      <!-- Summary Cards -->
+      <div id="stock-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+      </div>
+
+      <!-- Stock Table -->
+      <div class="card" style="padding:0;overflow-x:auto">
+        <div style="padding:1rem 1.2rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+          <span style="font-weight:700">📋 All Items</span>
+          <input id="stock-search" type="text" placeholder="🔍 Search..."
+            style="padding:.4rem .8rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.85rem;width:200px"
+            oninput="stockFilter()">
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:.87rem">
+          <thead>
+            <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+              <th style="padding:.7rem 1rem;text-align:left">Item</th>
+              <th style="padding:.7rem 1rem;text-align:left">Category</th>
+              <th style="padding:.7rem 1rem;text-align:right">Stock</th>
+              <th style="padding:.7rem 1rem;text-align:center">Status</th>
+              <th style="padding:.7rem 1rem;text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="stock-tbody">
+            <tr><td colspan="5" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Stock Log -->
+      <div class="card" style="padding:0;overflow-x:auto;margin-top:1.5rem">
+        <div style="padding:1rem 1.2rem;font-weight:700;border-bottom:1px solid var(--border)">📝 Recent Stock Changes</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead>
+            <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+              <th style="padding:.6rem 1rem;text-align:left">Time</th>
+              <th style="padding:.6rem 1rem;text-align:left">Item</th>
+              <th style="padding:.6rem 1rem;text-align:right">Change</th>
+              <th style="padding:.6rem 1rem;text-align:right">New Qty</th>
+              <th style="padding:.6rem 1rem;text-align:left">Reason</th>
+              <th style="padding:.6rem 1rem;text-align:left">Note</th>
+            </tr>
+          </thead>
+          <tbody id="stock-log-tbody">
+            <tr><td colspan="6" style="padding:1.5rem;text-align:center;color:var(--text-muted)">No changes yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Stock Adjust Modal -->
+    <div id="stock-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);overflow-y:auto">
+      <div style="max-width:420px;margin:3rem auto;background:var(--surface);border-radius:16px;padding:2rem;position:relative">
+        <button onclick="document.getElementById('stock-modal').style.display='none'"
+          style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">✕</button>
+        <div style="font-weight:700;font-size:1.1rem;margin-bottom:1.2rem" id="stock-modal-title">Adjust Stock</div>
+        <input type="hidden" id="stock-adj-id">
+        <div style="display:flex;flex-direction:column;gap:1rem">
+          <div>
+            <label style="font-size:.82rem;color:var(--text-muted)">Quantity Change</label>
+            <div style="display:flex;gap:.5rem;margin-top:.3rem">
+              <button class="btn btn-sm" onclick="document.getElementById('stock-adj-qty').value=10" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.4rem .8rem;cursor:pointer">+10</button>
+              <button class="btn btn-sm" onclick="document.getElementById('stock-adj-qty').value=50" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.4rem .8rem;cursor:pointer">+50</button>
+              <button class="btn btn-sm" onclick="document.getElementById('stock-adj-qty').value=100" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.4rem .8rem;cursor:pointer">+100</button>
+              <button class="btn btn-sm" onclick="document.getElementById('stock-adj-qty').value=-5" style="background:var(--surface2);border:1px solid var(--border);color:#e74c3c;border-radius:8px;padding:.4rem .8rem;cursor:pointer">-5</button>
+            </div>
+            <input id="stock-adj-qty" type="number" placeholder="e.g. 50 or -10"
+              style="width:100%;margin-top:.5rem;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:1.1rem">
+          </div>
+          <div>
+            <label style="font-size:.82rem;color:var(--text-muted)">Reason</label>
+            <select id="stock-adj-reason" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+              <option value="restock">📥 Restock</option>
+              <option value="manual_adjust">✏️ Manual Adjust</option>
+              <option value="waste">🗑 Waste</option>
+              <option value="correction">🔧 Correction</option>
+              <option value="returned">↩ Returned</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;color:var(--text-muted)">Note (optional)</label>
+            <input id="stock-adj-note" type="text" placeholder="e.g. Morning restock"
+              style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          </div>
+          <button class="btn btn-primary" onclick="stockDoAdjust()" style="padding:.7rem;font-size:1rem">
+            ✅ Apply
+          </button>
         </div>
       </div>
     </div>
@@ -2287,6 +2386,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <button class="mnav-btn" id="mnav-tables" onclick="showPage('tables')">
       <span class="mnav-icon">🍽️</span>Tables
     </button>
+    <button class="mnav-btn" id="mnav-stock" onclick="showPage('stock')">
+      <span class="mnav-icon">📦</span>Stock
+    </button>
     <button class="mnav-btn" id="mnav-crm" onclick="showPage('crm')">
       <span class="mnav-icon">👥</span>CRM
     </button>
@@ -2416,7 +2518,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -2430,6 +2532,7 @@ function showPage(page) {
   if (page==='tables')    { loadTables(); }
   if (page==='crm')       { crmLoadCustomers(); }
   if (page==='shift')      { shiftLoad(); }
+  if (page==='stock')      { stockLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
@@ -4275,6 +4378,130 @@ async function crmSaveTag(phone) {
     document.getElementById('crm-modal').style.display = 'none';
     crmLoadCustomers();
   } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+/* ═══════════════════════════════════════
+   STOCK MANAGEMENT
+═══════════════════════════════════════ */
+let _stockItems = [];
+
+async function stockLoad() {
+  try {
+    const r = await fetch('stock_api.php?action=overview');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    _stockItems = d.items;
+    stockRenderSummary(d.summary);
+    stockRenderTable(d.items);
+    stockLoadLog();
+  } catch(e) {
+    document.getElementById('stock-tbody').innerHTML =
+      `<tr><td colspan="5" style="padding:2rem;text-align:center;color:#e74c3c">${e.message}</td></tr>`;
+  }
+}
+
+function stockRenderSummary(s) {
+  document.getElementById('stock-summary').innerHTML = `
+    <div class="card" style="padding:1rem;text-align:center">
+      <div style="font-size:1.5rem;font-weight:700">${s.total_items}</div>
+      <div style="font-size:.78rem;color:var(--text-muted)">Total Items</div>
+    </div>
+    <div class="card" style="padding:1rem;text-align:center">
+      <div style="font-size:1.5rem;font-weight:700">${Number(s.total_stock).toLocaleString()}</div>
+      <div style="font-size:.78rem;color:var(--text-muted)">Total Stock</div>
+    </div>
+    <div class="card" style="padding:1rem;text-align:center">
+      <div style="font-size:1.5rem;font-weight:700;color:${s.low_count?'#f39c12':'var(--text)'}">${s.low_count}</div>
+      <div style="font-size:.78rem;color:var(--text-muted)">⚠️ Low Stock</div>
+    </div>
+    <div class="card" style="padding:1rem;text-align:center">
+      <div style="font-size:1.5rem;font-weight:700;color:${s.out_count?'#e74c3c':'var(--text)'}">${s.out_count}</div>
+      <div style="font-size:.78rem;color:var(--text-muted)">🚫 Out of Stock</div>
+    </div>`;
+}
+
+function stockRenderTable(items) {
+  const tbody = document.getElementById('stock-tbody');
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:2rem;text-align:center;color:var(--text-muted)">No items</td></tr>';
+    return;
+  }
+  tbody.innerHTML = items.map(i => {
+    const qty = parseInt(i.stock_qty);
+    let badge, color;
+    if (qty <= 0) { badge = '🚫 Out'; color = '#e74c3c'; }
+    else if (qty <= 10) { badge = '⚠️ Low'; color = '#f39c12'; }
+    else { badge = '✅ OK'; color = '#27ae60'; }
+    return `<tr style="border-bottom:1px solid var(--border)" data-name="${escHtml(i.name).toLowerCase()}">
+      <td style="padding:.7rem 1rem"><span style="margin-right:.4rem">${i.emoji||'🍽️'}</span><strong>${escHtml(i.name)}</strong></td>
+      <td style="padding:.7rem 1rem;color:var(--text-muted);font-size:.82rem">${escHtml(i.category||'')}</td>
+      <td style="padding:.7rem 1rem;text-align:right;font-weight:700;font-size:1rem">${qty}</td>
+      <td style="padding:.7rem 1rem;text-align:center"><span style="color:${color};font-size:.82rem;font-weight:600">${badge}</span></td>
+      <td style="padding:.7rem 1rem;text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="stockOpenAdj(${i.id},'${escHtml(i.name)}',${qty})">Adjust</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function stockFilter() {
+  const q = document.getElementById('stock-search').value.toLowerCase();
+  document.querySelectorAll('#stock-tbody tr[data-name]').forEach(tr => {
+    tr.style.display = tr.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+
+function stockOpenAdj(id, name, currentQty) {
+  document.getElementById('stock-modal').style.display = 'block';
+  document.getElementById('stock-modal-title').textContent = `📦 ${name} (current: ${currentQty})`;
+  document.getElementById('stock-adj-id').value = id;
+  document.getElementById('stock-adj-qty').value = '';
+  document.getElementById('stock-adj-note').value = '';
+  document.getElementById('stock-adj-reason').value = 'restock';
+}
+
+async function stockDoAdjust() {
+  const itemId = parseInt(document.getElementById('stock-adj-id').value);
+  const qty    = parseInt(document.getElementById('stock-adj-qty').value);
+  const reason = document.getElementById('stock-adj-reason').value;
+  const note   = document.getElementById('stock-adj-note').value.trim();
+  if (!itemId || !qty || qty === 0) { toast('Quantity ထည့်ပါ','err'); return; }
+  try {
+    const r = await fetch('stock_api.php?action=adjust', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({item_id: itemId, change_qty: qty, reason, note, staff_name:'Admin'})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    toast(`✅ ${d.item_name}: ${d.old_qty} → ${d.new_qty}`);
+    document.getElementById('stock-modal').style.display = 'none';
+    stockLoad();
+  } catch(e) { toast('❌ '+e.message,'err'); }
+}
+
+async function stockLoadLog() {
+  const tbody = document.getElementById('stock-log-tbody');
+  try {
+    const r = await fetch('stock_api.php?action=log&per=15');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    if (!d.logs.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:var(--text-muted)">No changes yet</td></tr>';
+      return;
+    }
+    const reasonLabel = {restock:'📥 Restock',manual_adjust:'✏️ Adjust',order_deduct:'🛒 Order',waste:'🗑 Waste',correction:'🔧 Fix',returned:'↩ Return'};
+    tbody.innerHTML = d.logs.map(l => {
+      const isNeg = l.change_qty < 0;
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:.5rem 1rem;font-size:.8rem;color:var(--text-muted)">${l.created_at.slice(5,16)}</td>
+        <td style="padding:.5rem 1rem">${l.emoji||'🍽️'} ${escHtml(l.item_name)}</td>
+        <td style="padding:.5rem 1rem;text-align:right;font-weight:700;color:${isNeg?'#e74c3c':'#27ae60'}">${isNeg?'':'+'}<span>${l.change_qty}</span></td>
+        <td style="padding:.5rem 1rem;text-align:right">${l.new_qty}</td>
+        <td style="padding:.5rem 1rem;font-size:.82rem">${reasonLabel[l.reason]||l.reason}</td>
+        <td style="padding:.5rem 1rem;font-size:.8rem;color:var(--text-muted)">${escHtml(l.note||l.order_id?'Order #'+l.order_id:'')}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {}
 }
 
 /* ═══════════════════════════════════════
