@@ -4498,7 +4498,7 @@ async function stockLoadLog() {
         <td style="padding:.5rem 1rem;text-align:right;font-weight:700;color:${isNeg?'#e74c3c':'#27ae60'}">${isNeg?'':'+'}<span>${l.change_qty}</span></td>
         <td style="padding:.5rem 1rem;text-align:right">${l.new_qty}</td>
         <td style="padding:.5rem 1rem;font-size:.82rem">${reasonLabel[l.reason]||l.reason}</td>
-        <td style="padding:.5rem 1rem;font-size:.8rem;color:var(--text-muted)">${escHtml(l.note||l.order_id?'Order #'+l.order_id:'')}</td>
+        <td style="padding:.5rem 1rem;font-size:.8rem;color:var(--text-muted)">${escHtml(l.note ? l.note : (l.order_id ? 'Order #'+l.order_id : ''))}</td>
       </tr>`;
     }).join('');
   } catch(e) {}
