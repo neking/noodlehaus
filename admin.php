@@ -1041,6 +1041,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('tables')" id="nav-tables">
         <span class="nav-icon">🍽️</span> Tables
       </div>
+      <div class="nav-item" onclick="showPage('reserve')" id="nav-reserve">
+        <span class="nav-icon">📅</span> Reservations
+      </div>
       <div class="nav-item" onclick="showPage('stock')" id="nav-stock">
         <span class="nav-icon">📦</span> Stock
       </div>
@@ -1353,6 +1356,115 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <div class="modal-foot">
           <button class="btn btn-ghost" onclick="document.getElementById('add-table-modal').classList.remove('open')">Cancel</button>
           <button class="btn btn-primary" onclick="saveNewTable()">Save Table</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RESERVATIONS PAGE ── -->
+    <div id="page-reserve" style="display:none">
+      <div class="page-head">
+        <h1 class="page-title">📅 Table Reservations</h1>
+      </div>
+
+      <!-- Date picker + New button -->
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center">
+        <input id="res-date" type="date" onchange="resLoad()"
+          style="padding:.6rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+        <select id="res-status-filter" onchange="resLoad()"
+          style="padding:.6rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <option value="">All Status</option>
+          <option value="pending">⏳ Pending</option>
+          <option value="confirmed">✅ Confirmed</option>
+          <option value="seated">🪑 Seated</option>
+          <option value="completed">✔️ Completed</option>
+          <option value="cancelled">❌ Cancelled</option>
+          <option value="no_show">👻 No Show</option>
+        </select>
+        <span id="res-count" style="color:var(--text-muted);font-size:.85rem"></span>
+        <button class="btn btn-primary" onclick="resOpenNew()" style="margin-left:auto;padding:.6rem 1.2rem">
+          + New Reservation
+        </button>
+      </div>
+
+      <!-- Reservations Table -->
+      <div class="card" style="overflow-x:auto;padding:0">
+        <table style="width:100%;border-collapse:collapse;font-size:.87rem">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);background:var(--surface2)">
+              <th style="padding:.7rem 1rem;text-align:left">Time</th>
+              <th style="padding:.7rem 1rem;text-align:left">Customer</th>
+              <th style="padding:.7rem 1rem;text-align:center">Party</th>
+              <th style="padding:.7rem 1rem;text-align:left">Table</th>
+              <th style="padding:.7rem 1rem;text-align:center">Status</th>
+              <th style="padding:.7rem 1rem;text-align:left">Notes</th>
+              <th style="padding:.7rem 1rem;text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="res-tbody">
+            <tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Reservation Create/Edit Modal -->
+    <div id="res-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);overflow-y:auto">
+      <div style="max-width:480px;margin:2rem auto;background:var(--surface);border-radius:16px;padding:2rem;position:relative">
+        <button onclick="document.getElementById('res-modal').style.display='none'"
+          style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">✕</button>
+        <div style="font-weight:700;font-size:1.1rem;margin-bottom:1.2rem" id="res-modal-title">📅 New Reservation</div>
+        <div style="display:flex;flex-direction:column;gap:1rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Name *</label>
+              <input id="res-name" type="text" placeholder="Customer name"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Phone *</label>
+              <input id="res-phone" type="tel" placeholder="09xxxxxxxxx"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem">
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Date *</label>
+              <input id="res-date-input" type="date"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Time *</label>
+              <input id="res-time" type="time"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Party Size</label>
+              <input id="res-party" type="number" min="1" max="20" value="2"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Table</label>
+              <select id="res-table"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+                <option value="">Auto-assign</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Duration (min)</label>
+              <input id="res-duration" type="number" min="30" step="30" value="90"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:.82rem;color:var(--text-muted)">Notes</label>
+            <input id="res-notes" type="text" placeholder="Special requests..."
+              style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          </div>
+          <button class="btn btn-primary" onclick="resCreate()" style="padding:.7rem;font-size:1rem">
+            ✅ Save Reservation
+          </button>
         </div>
       </div>
     </div>
@@ -2386,6 +2498,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <button class="mnav-btn" id="mnav-tables" onclick="showPage('tables')">
       <span class="mnav-icon">🍽️</span>Tables
     </button>
+    <button class="mnav-btn" id="mnav-reserve" onclick="showPage('reserve')">
+      <span class="mnav-icon">📅</span>Reserve
+    </button>
     <button class="mnav-btn" id="mnav-stock" onclick="showPage('stock')">
       <span class="mnav-icon">📦</span>Stock
     </button>
@@ -2518,7 +2633,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift','stock'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -2533,6 +2648,7 @@ function showPage(page) {
   if (page==='crm')       { crmLoadCustomers(); }
   if (page==='shift')      { shiftLoad(); }
   if (page==='stock')      { stockLoad(); }
+  if (page==='reserve')    { resLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
@@ -4378,6 +4494,139 @@ async function crmSaveTag(phone) {
     document.getElementById('crm-modal').style.display = 'none';
     crmLoadCustomers();
   } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+/* ═══════════════════════════════════════
+   RESERVATIONS
+═══════════════════════════════════════ */
+let _resTables = [];
+
+function resToday() { return new Date().toISOString().slice(0,10); }
+
+async function resLoad() {
+  const dateEl = document.getElementById('res-date');
+  if (!dateEl.value) dateEl.value = resToday();
+  const date   = dateEl.value;
+  const status = document.getElementById('res-status-filter')?.value || '';
+
+  const tbody = document.getElementById('res-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr>';
+
+  try {
+    const params = new URLSearchParams({action:'list', date, per:50});
+    if (status) params.set('status', status);
+    const r = await fetch('reservation_api.php?' + params);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+
+    document.getElementById('res-count').textContent = `${d.total} reservations`;
+    resRenderTable(d.reservations);
+
+    // Load tables for modal
+    const t = await fetch('reservation_api.php?action=today');
+    const td = await t.json();
+    if (td.ok) _resTables = td.tables || [];
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:2rem;text-align:center;color:#e74c3c">${e.message}</td></tr>`;
+  }
+}
+
+function resRenderTable(rows) {
+  const tbody = document.getElementById('res-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">No reservations</td></tr>';
+    return;
+  }
+  const badge = {
+    pending:'⏳ Pending', confirmed:'✅ Confirmed', seated:'🪑 Seated',
+    completed:'✔️ Done', cancelled:'❌ Cancelled', no_show:'👻 No Show'
+  };
+  const badgeColor = {
+    pending:'#f39c12', confirmed:'#27ae60', seated:'#3498db',
+    completed:'var(--text-muted)', cancelled:'#e74c3c', no_show:'#95a5a6'
+  };
+
+  tbody.innerHTML = rows.map(r => `
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:.7rem 1rem;font-weight:700;font-size:.95rem">${r.reservation_time.slice(0,5)}</td>
+      <td style="padding:.7rem 1rem">
+        <div style="font-weight:600">${escHtml(r.customer_name)}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">${escHtml(r.customer_phone)}</div>
+      </td>
+      <td style="padding:.7rem 1rem;text-align:center;font-weight:600">${r.party_size}👤</td>
+      <td style="padding:.7rem 1rem">${r.table_code ? '🪑 '+escHtml(r.table_code) : '<span style="color:var(--text-muted)">Auto</span>'}</td>
+      <td style="padding:.7rem 1rem;text-align:center">
+        <span style="color:${badgeColor[r.status]};font-size:.82rem;font-weight:600">${badge[r.status]||r.status}</span>
+      </td>
+      <td style="padding:.7rem 1rem;font-size:.82rem;color:var(--text-muted)">${escHtml(r.notes||'')}</td>
+      <td style="padding:.7rem 1rem;text-align:center">
+        <select onchange="resUpdateStatus(${r.id},this.value)" style="padding:.3rem .5rem;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem">
+          ${['pending','confirmed','seated','completed','cancelled','no_show'].map(s =>
+            `<option value="${s}" ${s===r.status?'selected':''}>${s}</option>`
+          ).join('')}
+        </select>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function resOpenNew() {
+  document.getElementById('res-modal').style.display = 'block';
+  document.getElementById('res-modal-title').textContent = '📅 New Reservation';
+  document.getElementById('res-name').value = '';
+  document.getElementById('res-phone').value = '';
+  document.getElementById('res-date-input').value = document.getElementById('res-date').value || resToday();
+  document.getElementById('res-time').value = '';
+  document.getElementById('res-party').value = '2';
+  document.getElementById('res-duration').value = '90';
+  document.getElementById('res-notes').value = '';
+
+  // Populate tables dropdown
+  const sel = document.getElementById('res-table');
+  sel.innerHTML = '<option value="">Auto-assign</option>' +
+    _resTables.map(t => `<option value="${escHtml(t.table_code)}">🪑 ${escHtml(t.table_code)} (${t.seats} seats)</option>`).join('');
+}
+
+async function resCreate() {
+  const name  = document.getElementById('res-name').value.trim();
+  const phone = document.getElementById('res-phone').value.trim();
+  const date  = document.getElementById('res-date-input').value;
+  const time  = document.getElementById('res-time').value;
+  const party = parseInt(document.getElementById('res-party').value) || 2;
+  const table = document.getElementById('res-table').value;
+  const dur   = parseInt(document.getElementById('res-duration').value) || 90;
+  const notes = document.getElementById('res-notes').value.trim();
+
+  if (!name || !phone) { toast('Name and phone required','err'); return; }
+  if (!date || !time) { toast('Date and time required','err'); return; }
+
+  try {
+    const r = await fetch('reservation_api.php?action=create', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        customer_name:name, customer_phone:phone, party_size:party,
+        table_code:table||null, reservation_date:date, reservation_time:time,
+        duration_min:dur, notes:notes||null
+      })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    toast('✅ Reservation created');
+    document.getElementById('res-modal').style.display = 'none';
+    resLoad();
+  } catch(e) { toast('❌ '+e.message,'err'); }
+}
+
+async function resUpdateStatus(id, status) {
+  try {
+    const r = await fetch('reservation_api.php?action=update_status', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id, status})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    toast('✅ Status updated');
+  } catch(e) { toast('❌ '+e.message,'err'); resLoad(); }
 }
 
 /* ═══════════════════════════════════════
