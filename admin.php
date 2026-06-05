@@ -1056,9 +1056,6 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('delivery')" id="nav-delivery">
         <span class="nav-icon">🛵</span> Delivery
       </div>
-      <div class="nav-item" onclick="showPage('delivery')" id="nav-delivery">
-        <span class="nav-icon">🛵</span> Delivery
-      </div>
       <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
         <span class="nav-icon">🏢</span> Branches
       </div>
@@ -1742,52 +1739,6 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <div id="dlv-active" style="padding:.8rem;max-height:500px;overflow-y:auto">
             <div style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── DELIVERY PAGE ── -->
-    <div id="page-delivery" style="display:none">
-      <div class="page-head">
-        <h1 class="page-title">🛵 Delivery Management</h1>
-      </div>
-
-      <!-- Stats -->
-      <div id="del-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem"></div>
-
-      <!-- Active Deliveries -->
-      <div class="card" style="padding:0;overflow-x:auto;margin-bottom:1.5rem">
-        <div style="padding:1rem 1.2rem;font-weight:700;border-bottom:1px solid var(--border)">📦 Active Deliveries</div>
-        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
-          <thead>
-            <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
-              <th style="padding:.6rem 1rem;text-align:left">Order</th>
-              <th style="padding:.6rem 1rem;text-align:left">Customer</th>
-              <th style="padding:.6rem 1rem;text-align:left">Items</th>
-              <th style="padding:.6rem 1rem;text-align:right">Amount</th>
-              <th style="padding:.6rem 1rem;text-align:center">Status</th>
-              <th style="padding:.6rem 1rem;text-align:left">Driver</th>
-              <th style="padding:.6rem 1rem;text-align:center">Action</th>
-            </tr>
-          </thead>
-          <tbody id="del-active-tbody">
-            <tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Drivers + Zones -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
-        <div class="card" style="padding:0;overflow:hidden">
-          <div style="padding:1rem 1.2rem;font-weight:700;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-            🧑‍✈️ Drivers
-            <button class="btn btn-ghost btn-sm" onclick="delAddDriver()">+ Add</button>
-          </div>
-          <div id="del-drivers" style="padding:.5rem"></div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden">
-          <div style="padding:1rem 1.2rem;font-weight:700;border-bottom:1px solid var(--border)">📍 Delivery Zones</div>
-          <div id="del-zones" style="padding:.5rem"></div>
         </div>
       </div>
     </div>
@@ -2660,9 +2611,6 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     </button>
     <button class="mnav-btn" id="mnav-shift" onclick="showPage('shift')">
       <span class="mnav-icon">🕐</span>Shifts
-    </button>
-    <button class="mnav-btn" id="mnav-delivery" onclick="showPage('delivery')">
-      <span class="mnav-icon">🛵</span>Delivery
     </button>
     <button class="mnav-btn" id="mnav-delivery" onclick="showPage('delivery')">
       <span class="mnav-icon">🛵</span>Delivery
