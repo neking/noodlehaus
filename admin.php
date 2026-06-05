@@ -1056,6 +1056,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('delivery')" id="nav-delivery">
         <span class="nav-icon">🛵</span> Delivery
       </div>
+      <div class="nav-item" onclick="showPage('delivery')" id="nav-delivery">
+        <span class="nav-icon">🛵</span> Delivery
+      </div>
       <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
         <span class="nav-icon">🏢</span> Branches
       </div>
@@ -1739,6 +1742,52 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <div id="dlv-active" style="padding:.8rem;max-height:500px;overflow-y:auto">
             <div style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DELIVERY PAGE ── -->
+    <div id="page-delivery" style="display:none">
+      <div class="page-head">
+        <h1 class="page-title">🛵 Delivery Management</h1>
+      </div>
+
+      <!-- Stats -->
+      <div id="del-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem"></div>
+
+      <!-- Active Deliveries -->
+      <div class="card" style="padding:0;overflow-x:auto;margin-bottom:1.5rem">
+        <div style="padding:1rem 1.2rem;font-weight:700;border-bottom:1px solid var(--border)">📦 Active Deliveries</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead>
+            <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+              <th style="padding:.6rem 1rem;text-align:left">Order</th>
+              <th style="padding:.6rem 1rem;text-align:left">Customer</th>
+              <th style="padding:.6rem 1rem;text-align:left">Items</th>
+              <th style="padding:.6rem 1rem;text-align:right">Amount</th>
+              <th style="padding:.6rem 1rem;text-align:center">Status</th>
+              <th style="padding:.6rem 1rem;text-align:left">Driver</th>
+              <th style="padding:.6rem 1rem;text-align:center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="del-active-tbody">
+            <tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Drivers + Zones -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="padding:1rem 1.2rem;font-weight:700;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            🧑‍✈️ Drivers
+            <button class="btn btn-ghost btn-sm" onclick="delAddDriver()">+ Add</button>
+          </div>
+          <div id="del-drivers" style="padding:.5rem"></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="padding:1rem 1.2rem;font-weight:700;border-bottom:1px solid var(--border)">📍 Delivery Zones</div>
+          <div id="del-zones" style="padding:.5rem"></div>
         </div>
       </div>
     </div>
@@ -2615,6 +2664,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <button class="mnav-btn" id="mnav-delivery" onclick="showPage('delivery')">
       <span class="mnav-icon">🛵</span>Delivery
     </button>
+    <button class="mnav-btn" id="mnav-delivery" onclick="showPage('delivery')">
+      <span class="mnav-icon">🛵</span>Delivery
+    </button>
     <button class="mnav-btn" id="mnav-branches" onclick="showPage('branches')">
       <span class="mnav-icon">🏢</span>Branches
     </button>
@@ -2758,6 +2810,7 @@ function showPage(page) {
   if (page==='stock')      { stockLoad(); }
   if (page==='reserve')    { resLoad(); }
   if (page==='branches')   { branchLoad(); }
+  if (page==='delivery')   { delLoad(); }
   if (page==='delivery')   { dlvLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
@@ -4692,6 +4745,143 @@ async function dlvAssign(orderId) {
     toast(`✅ Assigned to ${d.driver_name}`);
     dlvLoad();
   } catch(e) { toast('❌ '+e.message,'err'); }
+}
+
+/* ═══════════════════════════════════════
+   DELIVERY
+═══════════════════════════════════════ */
+let _delDrivers = [];
+
+async function delLoad() {
+  await Promise.all([delLoadStats(), delLoadActive(), delLoadDrivers(), delLoadZones()]);
+}
+
+async function delLoadStats() {
+  try {
+    const r = await fetch('delivery_api.php?action=stats');
+    const d = await r.json();
+    if (!d.ok) return;
+    const s = d.stats;
+    document.getElementById('del-stats').innerHTML = `
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:1.5rem;font-weight:700;color:${s.pending_assign>0?'#f39c12':'var(--text)'}">${s.pending_assign}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">⏳ Pending Assign</div>
+      </div>
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:1.5rem;font-weight:700">${s.active}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">🛵 Active</div>
+      </div>
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:1.5rem;font-weight:700;color:#27ae60">${s.today_delivered}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">✅ Today Delivered</div>
+      </div>
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:1.5rem;font-weight:700">${s.drivers_available}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">🟢 Drivers Available</div>
+      </div>`;
+  } catch(e) {}
+}
+
+async function delLoadActive() {
+  const tbody = document.getElementById('del-active-tbody');
+  try {
+    const r = await fetch('delivery_api.php?action=active');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    if (!d.deliveries.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">No active deliveries</td></tr>';
+      return;
+    }
+    const statusBadge = {pending:'⏳',assigned:'🔄',picked_up:'📦',delivering:'🛵'};
+    const statusColor = {pending:'#f39c12',assigned:'#3498db',picked_up:'#e84c2b',delivering:'#27ae60'};
+    tbody.innerHTML = d.deliveries.map(dl => `
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:.6rem 1rem;font-weight:700">NH-${String(dl.order_id).padStart(6,'0')}</td>
+        <td style="padding:.6rem 1rem"><div style="font-weight:600">${escHtml(dl.customer_name)}</div><div style="font-size:.78rem;color:var(--text-muted)">${escHtml(dl.customer_phone||'')}</div></td>
+        <td style="padding:.6rem 1rem;font-size:.82rem;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis">${escHtml(dl.items||'')}</td>
+        <td style="padding:.6rem 1rem;text-align:right;font-weight:600">${Number(dl.total_amount).toLocaleString()}</td>
+        <td style="padding:.6rem 1rem;text-align:center"><span style="color:${statusColor[dl.status]};font-weight:600">${statusBadge[dl.status]||''} ${dl.status}</span></td>
+        <td style="padding:.6rem 1rem">${dl.driver_name ? escHtml(dl.driver_name) : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td style="padding:.6rem 1rem;text-align:center">
+          ${dl.status==='pending' ? `
+            <select onchange="delAssign(${dl.id},this.value)" style="padding:.3rem;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem">
+              <option value="">Assign driver</option>
+              ${_delDrivers.filter(d=>d.status==='available').map(d=>`<option value="${d.id}">${escHtml(d.name)}</option>`).join('')}
+            </select>` : `<span style="font-size:.8rem;color:var(--text-muted)">${dl.status}</span>`}
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:2rem;text-align:center;color:#e74c3c">${e.message}</td></tr>`;
+  }
+}
+
+async function delLoadDrivers() {
+  try {
+    const r = await fetch('delivery_api.php?action=drivers');
+    const d = await r.json();
+    if (!d.ok) return;
+    _delDrivers = d.drivers;
+    const el = document.getElementById('del-drivers');
+    const statusIcon = {available:'🟢',busy:'🔴',offline:'⚫'};
+    const vehicleIcon = {motorbike:'🛵',bicycle:'🚲',car:'🚗',walk:'🚶'};
+    el.innerHTML = d.drivers.map(dr => `
+      <div style="display:flex;align-items:center;gap:.8rem;padding:.6rem .8rem;border-bottom:1px solid var(--border)">
+        <span style="font-size:1.2rem">${vehicleIcon[dr.vehicle_type]||'🛵'}</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:.88rem">${escHtml(dr.name)}</div>
+          <div style="font-size:.78rem;color:var(--text-muted)">${escHtml(dr.phone)} · ${dr.active_orders||0} active</div>
+        </div>
+        <span style="font-size:.85rem">${statusIcon[dr.status]||'⚫'} ${dr.status}</span>
+      </div>
+    `).join('') || '<div style="padding:1rem;text-align:center;color:var(--text-muted)">No drivers</div>';
+  } catch(e) {}
+}
+
+async function delLoadZones() {
+  try {
+    const r = await fetch('delivery_api.php?action=zones');
+    const d = await r.json();
+    if (!d.ok) return;
+    document.getElementById('del-zones').innerHTML = d.zones.map(z => `
+      <div style="display:flex;align-items:center;gap:.8rem;padding:.6rem .8rem;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:.88rem">${escHtml(z.zone_name)}</div>
+          <div style="font-size:.78rem;color:var(--text-muted)">${escHtml(z.township||'')} · ~${z.estimated_min}min</div>
+        </div>
+        <span style="font-weight:700;font-size:.9rem">${Number(z.fee).toLocaleString()} MMK</span>
+      </div>
+    `).join('') || '<div style="padding:1rem;text-align:center;color:var(--text-muted)">No zones</div>';
+  } catch(e) {}
+}
+
+async function delAssign(trackingId, driverId) {
+  if (!driverId) return;
+  try {
+    const r = await fetch('delivery_api.php?action=assign', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({tracking_id: trackingId, driver_id: parseInt(driverId)})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    toast('✅ Driver assigned');
+    delLoad();
+  } catch(e) { toast('❌ '+e.message,'err'); }
+}
+
+function delAddDriver() {
+  const name = prompt('Driver name:');
+  if (!name) return;
+  const phone = prompt('Phone:');
+  if (!phone) return;
+  const pin = prompt('PIN (4 digits):');
+  fetch('delivery_api.php?action=driver_create', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, phone, vehicle_type:'motorbike', pin: pin||null})
+  }).then(r=>r.json()).then(d=>{
+    if (d.ok) { toast('✅ Driver added'); delLoad(); }
+    else toast('❌ '+d.msg,'err');
+  });
 }
 
 /* ═══════════════════════════════════════
