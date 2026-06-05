@@ -267,5 +267,18 @@ try {
     @file_get_contents('http://localhost/stock_api.php?action=order_deduct', false, $stockCtx);
 } catch(Exception $e) { /* stock deduct fail သည် order ကို မထိ */ }
 
+// ── Phase 6C: Delivery auto-track (fire-and-forget) ──
+if (($d['order_type'] ?? '') === 'delivery') {
+    try {
+        $delCtx = stream_context_create(['http' => [
+            'method'  => 'POST',
+            'header'  => 'Content-Type: application/json',
+            'content' => json_encode(['order_id' => $orderId]),
+            'timeout' => 2,
+        ]]);
+        @file_get_contents('http://localhost/delivery_api.php?action=auto_track', false, $delCtx);
+    } catch(Exception $e) { /* delivery track fail သည် order ကို မထိ */ }
+}
+
 exit;
 
