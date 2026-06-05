@@ -31,6 +31,7 @@ $ready = $pdo->query("
     LEFT JOIN order_items oi ON oi.order_id = o.id
     WHERE kq.status = 'ready'
       AND o.deleted_at IS NULL
+      AND kq.pushed_at >= NOW() - INTERVAL 2 HOUR
     GROUP BY kq.id
     ORDER BY kq.pushed_at DESC
     LIMIT 8
@@ -51,6 +52,7 @@ $preparing = $pdo->query("
     LEFT JOIN order_items oi ON oi.order_id = o.id
     WHERE kq.status IN ('pending','preparing')
       AND o.deleted_at IS NULL
+      AND kq.pushed_at >= NOW() - INTERVAL 2 HOUR
     GROUP BY kq.id
     ORDER BY kq.pushed_at ASC
     LIMIT 12
