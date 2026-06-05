@@ -218,7 +218,7 @@ hookShiftAssign($pdo, $orderId);
 
 hookStockDeduct($pdo, $orderId, $items);
 
-hookDeliveryTrack($pdo, $orderId, $d['order_type'] ?? '');
+hookDeliveryTrack($pdo, $orderId, $orderType);
 
 exit;
 
