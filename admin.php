@@ -1,7 +1,9 @@
 <?php
 session_start();
 require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/auth_helper.php';
 $pdo = getPDO();
+$csrfToken = generateCsrfToken();
 
 /* ── ADMIN LOGIN ──
    Password ပြောင်းချင်ရင်:
@@ -1024,6 +1026,12 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <div class="sidebar-logo" style="display:flex;align-items:center;justify-content:space-between">
       <span>🍜 Noodle<span>Haus</span><span class="sidebar-badge">Admin</span></span>
       <button onclick="closeSidebar()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.2rem;cursor:pointer;display:none" id="sidebar-close-btn">✕</button>
+    </div>
+    <div style="padding:.5rem 1rem;border-bottom:1px solid rgba(255,255,255,.1)">
+      <select id="branch-select" onchange="switchBranch(this.value)"
+        style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:.8rem;cursor:pointer">
+        <option value="0">🏢 All Branches</option>
+      </select>
     </div>
     <nav>
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
@@ -2630,6 +2638,39 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 <div class="toast" id="toast"></div>
 
 <script>
+
+// ── CSRF Protection ──
+const CSRF_TOKEN = '<?= $csrfToken ?>';
+const _origFetch = window.fetch;
+window.fetch = function(url, opts = {}) {
+  if (opts.method === 'POST' || opts.method === 'post') {
+    opts.headers = opts.headers || {};
+    if (typeof opts.headers === 'object' && !(opts.headers instanceof Headers)) {
+      opts.headers['X-CSRF-Token'] = CSRF_TOKEN;
+    }
+  }
+  return _origFetch.call(this, url, opts);
+};
+
+// ── Branch Selector ──
+let currentBranchId = 0; // 0 = all branches
+(function loadBranchSelector() {
+  fetch('branch_api.php?action=list').then(r=>r.json()).then(d=>{
+    if (!d.ok) return;
+    const sel = document.getElementById('branch-select');
+    if (!sel) return;
+    d.branches.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = '🏢 ' + b.name + (b.is_active?'':' (inactive)');
+      sel.appendChild(opt);
+    });
+  }).catch(()=>{});
+})();
+function switchBranch(id) {
+  currentBranchId = parseInt(id) || 0;
+  toast('🏢 Branch: ' + (currentBranchId ? document.getElementById('branch-select').selectedOptions[0].textContent : 'All'));
+}
 
 // ── KPay QR Upload ──────────────────────────────
 async function uploadKpayQr(input) {
