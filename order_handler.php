@@ -208,77 +208,17 @@ if (!empty($customerPhone)) {
     } catch(Exception $e) { /* stamp fail သည် order ကို မထိ */ }
 }
 
-// ── Phase 5A: CRM profile sync (fire-and-forget, order ကို မထိ) ──
-if (!empty($customerPhone)) {
-    try {
-        $crmItems = [];
-        foreach ($items as $item) {
-            $crmItems[] = [
-                'menu_item_id' => (int)$item['item_id'],
-                'item_name'    => sanitizeStr($item['name'] ?? ''),
-                'qty'          => (int)$item['qty'],
-            ];
-        }
-        $crmPayload = json_encode([
-            'phone'          => $customerPhone,
-            'name'           => sanitizeStr($customer['name'] ?? ''),
-            'payment_method' => $paymentMethod,
-            'order_id'       => $orderId,
-            'total'          => $total,
-            'items'          => $crmItems,
-        ]);
-        $ctx = stream_context_create(['http' => [
-            'method'  => 'POST',
-            'header'  => 'Content-Type: application/json',
-            'content' => $crmPayload,
-            'timeout' => 2,
-        ]]);
-        @file_get_contents('http://localhost/crm_api.php?action=upsert', false, $ctx);
-    } catch(Exception $e) { /* CRM sync fail သည် order ကို မထိ */ }
-}
+// ── Order Hooks (direct PHP — no HTTP overhead) ──
+require_once __DIR__ . '/order_hooks.php';
 
-// ── Phase 5B: Shift order assign (fire-and-forget) ──
-try {
-    $shiftCtx = stream_context_create(['http' => [
-        'method'  => 'POST',
-        'header'  => 'Content-Type: application/json',
-        'content' => json_encode(['order_id' => $orderId]),
-        'timeout' => 2,
-    ]]);
-    @file_get_contents('http://localhost/shift_api.php?action=assign_order', false, $shiftCtx);
-} catch(Exception $e) { /* shift assign fail သည် order ကို မထိ */ }
+hookCrmUpsert($pdo, $customerPhone ?? '', sanitizeStr($customer['name'] ?? ''),
+    $paymentMethod, $orderId, $total, $items);
 
-// ── Phase 5E: Stock auto-deduct (fire-and-forget) ──
-try {
-    $stockItems = [];
-    foreach ($items as $item) {
-        $stockItems[] = [
-            'item_id' => (int)$item['item_id'],
-            'name'    => sanitizeStr($item['name'] ?? ''),
-            'qty'     => (int)$item['qty'],
-        ];
-    }
-    $stockCtx = stream_context_create(['http' => [
-        'method'  => 'POST',
-        'header'  => 'Content-Type: application/json',
-        'content' => json_encode(['order_id' => $orderId, 'items' => $stockItems]),
-        'timeout' => 2,
-    ]]);
-    @file_get_contents('http://localhost/stock_api.php?action=order_deduct', false, $stockCtx);
-} catch(Exception $e) { /* stock deduct fail သည် order ကို မထိ */ }
+hookShiftAssign($pdo, $orderId);
 
-// ── Phase 6C: Delivery auto-track (fire-and-forget) ──
-if (($d['order_type'] ?? '') === 'delivery') {
-    try {
-        $delCtx = stream_context_create(['http' => [
-            'method'  => 'POST',
-            'header'  => 'Content-Type: application/json',
-            'content' => json_encode(['order_id' => $orderId]),
-            'timeout' => 2,
-        ]]);
-        @file_get_contents('http://localhost/delivery_api.php?action=auto_track', false, $delCtx);
-    } catch(Exception $e) { /* delivery track fail သည် order ကို မထိ */ }
-}
+hookStockDeduct($pdo, $orderId, $items);
+
+hookDeliveryTrack($pdo, $orderId, $d['order_type'] ?? '');
 
 exit;
 
