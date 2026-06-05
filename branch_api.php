@@ -203,7 +203,9 @@ if ($action === 'dashboard') {
                AND DATE(o2.created_at) = CURDATE()) AS today_orders,
             (SELECT COALESCE(SUM(o3.total_amount), 0) FROM orders o3
              WHERE o3.branch_id = b.id AND o3.deleted_at IS NULL
-               AND DATE(o3.created_at) = CURDATE()) AS today_revenue
+               AND DATE(o3.created_at) = CURDATE()) AS today_revenue,
+            (SELECT COUNT(*) FROM staff s WHERE s.branch_id = b.id AND s.is_active = 1) AS total_staff,
+            (SELECT COUNT(*) FROM menu_items m WHERE m.branch_id = b.id AND m.is_active = 1) AS total_menu
         FROM branches b
         LEFT JOIN orders o ON o.branch_id = b.id AND o.deleted_at IS NULL
         GROUP BY b.id
