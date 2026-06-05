@@ -7,96 +7,71 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#252836;--accent:#e84c2b;--green:#27ae60;--yellow:#f1c40f;--blue:#3498db;--text:#f5f5f5;--muted:#8b8d97;--border:#2e3140}
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#252836;--accent:#e84c2b;--green:#27ae60;--yellow:#f1c40f;--text:#f5f5f5;--muted:#8b8d97;--border:#2e3140}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
 
-/* Login */
-.login{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:2rem}
-.login h1{font-size:1.5rem;margin-bottom:.5rem}
-.login .sub{color:var(--muted);margin-bottom:2rem;font-size:.9rem}
-.pin-input{width:200px;padding:1rem;text-align:center;font-size:2rem;letter-spacing:.5em;border:2px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text)}
-.pin-input:focus{border-color:var(--accent);outline:none}
+.login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:2rem}
+.login-screen h1{font-size:1.5rem;margin-bottom:.5rem}
+.login-screen .sub{color:var(--muted);margin-bottom:2rem}
+.pin-input{width:200px;padding:1rem;font-size:1.5rem;text-align:center;letter-spacing:.5em;border:2px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text)}
 .login-btn{margin-top:1rem;padding:.8rem 2rem;background:var(--accent);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer}
 
-/* Header */
-.header{display:flex;align-items:center;justify-content:space-between;padding:1rem;background:var(--surface);border-bottom:1px solid var(--border)}
-.header .name{font-weight:700}
-.header .status{padding:.3rem .8rem;border-radius:20px;font-size:.78rem;font-weight:700}
-.status-avail{background:rgba(39,174,96,.2);color:var(--green)}
-.status-busy{background:rgba(232,76,43,.2);color:var(--accent)}
+.app{display:none}
+.app-header{padding:1rem 1.5rem;background:var(--surface);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.app-header .name{font-weight:700;font-size:1.1rem}
+.status-toggle{padding:.4rem 1rem;border-radius:20px;font-size:.8rem;font-weight:700;border:none;cursor:pointer}
+.status-toggle.available{background:var(--green);color:#fff}
+.status-toggle.offline{background:var(--muted);color:#fff}
 
-/* Orders */
-.orders{padding:1rem}
-.section-title{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.8rem}
+.orders-list{padding:1rem}
 .order-card{background:var(--surface);border-radius:14px;padding:1.2rem;margin-bottom:1rem;border-left:4px solid var(--yellow)}
-.order-card.picked_up{border-left-color:var(--accent)}
-.order-card.on_the_way{border-left-color:var(--blue)}
-.order-card .order-head{display:flex;justify-content:space-between;margin-bottom:.6rem}
-.order-card .order-id{font-weight:800;font-size:1.1rem}
-.order-card .amount{font-weight:700;color:var(--green)}
-.order-card .customer{margin-bottom:.4rem}
-.order-card .customer .cname{font-weight:600}
-.order-card .customer .cphone{color:var(--muted);font-size:.85rem}
-.order-card .items{font-size:.83rem;color:var(--muted);margin-bottom:.8rem}
-.order-card .actions{display:flex;gap:.5rem;flex-wrap:wrap}
-.act-btn{padding:.5rem 1rem;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s}
-.act-btn:active{transform:scale(.95)}
-.act-btn.primary{background:var(--accent);color:#fff}
-.act-btn.green{background:var(--green);color:#fff}
-.act-btn.blue{background:var(--blue);color:#fff}
-.act-btn.ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.order-card.assigned{border-left-color:var(--accent)}
+.order-card.picked_up,.order-card.delivering{border-left-color:var(--green)}
+.order-card .order-num{font-weight:800;font-size:1.1rem;color:var(--accent)}
+.order-card .customer{margin-top:.4rem;font-weight:600}
+.order-card .address{color:var(--muted);font-size:.85rem;margin-top:.2rem}
+.order-card .items{color:var(--muted);font-size:.82rem;margin-top:.4rem}
+.order-card .amount{font-weight:700;margin-top:.4rem}
+.order-card .actions{display:flex;gap:.5rem;margin-top:.8rem;flex-wrap:wrap}
+.action-btn{padding:.6rem 1.2rem;border:none;border-radius:10px;font-weight:700;font-size:.85rem;cursor:pointer}
+.action-btn.pickup{background:var(--accent);color:#fff}
+.action-btn.deliver{background:var(--green);color:#fff}
+.action-btn.complete{background:var(--green);color:#fff}
 
 .empty{text-align:center;padding:3rem;color:var(--muted)}
 .empty .icon{font-size:3rem;margin-bottom:.5rem}
-
-/* Bottom bar */
-.bottom-bar{position:fixed;bottom:0;left:0;right:0;padding:.8rem 1rem;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:.8rem}
-.bottom-bar button{flex:1;padding:.8rem;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:.9rem}
 </style>
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div class="login" id="d-login">
-  <div style="font-size:3rem;margin-bottom:1rem">🛵</div>
+<!-- Login Screen -->
+<div class="login-screen" id="d-login">
+  <div style="font-size:2.5rem;margin-bottom:1rem">🛵</div>
   <h1>NoodleHaus Driver</h1>
   <div class="sub">Enter your PIN to start</div>
-  <input class="pin-input" id="d-pin" type="password" maxlength="6" placeholder="••••"
-    onkeyup="if(event.key==='Enter')dLogin()">
-  <button class="login-btn" onclick="dLogin()">Login →</button>
-  <div id="d-login-err" style="color:var(--accent);margin-top:1rem;font-size:.85rem"></div>
+  <input class="pin-input" id="d-pin" type="password" maxlength="6" placeholder="••••">
+  <button class="login-btn" onclick="dLogin()">Start Driving →</button>
+  <div id="d-login-err" style="color:#e74c3c;margin-top:1rem;font-size:.85rem"></div>
 </div>
 
-<!-- MAIN SCREEN -->
-<div id="d-main" style="display:none">
-  <div class="header">
+<!-- Main App -->
+<div class="app" id="d-app">
+  <div class="app-header">
     <div>
-      <div class="name" id="d-driver-name">Driver</div>
-      <div style="font-size:.78rem;color:var(--muted)" id="d-vehicle">🛵 motorbike</div>
+      <div class="name" id="d-name">Driver</div>
+      <div style="font-size:.8rem;color:var(--muted)" id="d-vehicle">🛵 motorbike</div>
     </div>
-    <span class="status status-avail" id="d-status-badge">Available</span>
+    <button class="status-toggle available" id="d-status-btn" onclick="dToggleStatus()">🟢 Available</button>
   </div>
 
-  <div class="orders" id="d-orders" style="padding-bottom:80px">
-    <div class="section-title">📦 Active Deliveries</div>
-    <div id="d-order-list">
-      <div class="empty"><div class="icon">☕</div>No active deliveries</div>
-    </div>
-  </div>
-
-  <div class="bottom-bar">
-    <button style="background:var(--green);color:#fff" id="d-toggle-btn" onclick="dToggleStatus()">🟢 Go Online</button>
-    <button style="background:var(--surface2);color:var(--text)" onclick="dRefresh()">🔄 Refresh</button>
-    <button style="background:var(--surface2);color:var(--muted)" onclick="dLogout()">↩ Logout</button>
+  <div class="orders-list" id="d-orders">
+    <div class="empty"><div class="icon">📦</div>No active deliveries</div>
   </div>
 </div>
 
 <script>
 let driver = null;
-const POLL = 10000;
-let pollTimer = null;
-
-const vehicleIcon = {motorbike:'🛵',bicycle:'🚲',car:'🚗',foot:'🚶'};
+let driverStatus = 'available';
 
 async function dLogin() {
   const pin = document.getElementById('d-pin').value.trim();
@@ -109,123 +84,72 @@ async function dLogin() {
     const d = await r.json();
     if (!d.ok) throw new Error(d.msg);
     driver = d.driver;
+    driverStatus = 'available';
     document.getElementById('d-login').style.display = 'none';
-    document.getElementById('d-main').style.display = '';
-    document.getElementById('d-driver-name').textContent = driver.name;
-    document.getElementById('d-vehicle').textContent = (vehicleIcon[driver.vehicle]||'🛵') + ' ' + driver.vehicle;
-    updateStatusBadge();
-    dRefresh();
-    pollTimer = setInterval(dRefresh, POLL);
+    document.getElementById('d-app').style.display = 'block';
+    document.getElementById('d-name').textContent = driver.name;
+    const icons = {motorbike:'🛵',bicycle:'🚲',car:'🚗',walk:'🚶'};
+    document.getElementById('d-vehicle').textContent = (icons[driver.vehicle_type]||'🛵') + ' ' + driver.vehicle_type;
+    dLoadOrders();
+    setInterval(dLoadOrders, 8000);
   } catch(e) {
     document.getElementById('d-login-err').textContent = e.message;
   }
 }
 
-function updateStatusBadge() {
-  const badge = document.getElementById('d-status-badge');
-  const btn = document.getElementById('d-toggle-btn');
-  if (driver.status === 'available') {
-    badge.textContent = '🟢 Available';
-    badge.className = 'status status-avail';
-    btn.textContent = '🔴 Go Offline';
-    btn.style.background = '#e74c3c';
-  } else {
-    badge.textContent = '⚫ Offline';
-    badge.className = 'status status-busy';
-    btn.textContent = '🟢 Go Online';
-    btn.style.background = 'var(--green)';
-  }
+async function dToggleStatus() {
+  driverStatus = driverStatus === 'available' ? 'offline' : 'available';
+  const btn = document.getElementById('d-status-btn');
+  btn.className = 'status-toggle ' + driverStatus;
+  btn.textContent = driverStatus === 'available' ? '🟢 Available' : '⚫ Offline';
+  await fetch('delivery_api.php?action=driver_status', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({id: driver.id, status: driverStatus})
+  });
 }
 
-async function dRefresh() {
+async function dLoadOrders() {
   if (!driver) return;
   try {
     const r = await fetch(`delivery_api.php?action=driver_orders&driver_id=${driver.id}`);
     const d = await r.json();
     if (!d.ok) return;
-    renderOrders(d.orders);
-  } catch(e) {}
-}
-
-function renderOrders(orders) {
-  const el = document.getElementById('d-order-list');
-  if (!orders.length) {
-    el.innerHTML = '<div class="empty"><div class="icon">☕</div>No active deliveries<br><span style="font-size:.82rem">Waiting for orders...</span></div>';
-    return;
-  }
-  el.innerHTML = orders.map(o => {
-    const statusLabel = {assigned:'📋 Assigned',picked_up:'📦 Picked Up',on_the_way:'🛵 On The Way'};
-    let buttons = '';
-    if (o.status === 'assigned') {
-      buttons = `<button class="act-btn primary" onclick="dUpdate(${o.order_id},'picked_up')">📦 Pick Up</button>`;
-    } else if (o.status === 'picked_up') {
-      buttons = `<button class="act-btn blue" onclick="dUpdate(${o.order_id},'on_the_way')">🛵 On My Way</button>`;
-    } else if (o.status === 'on_the_way') {
-      buttons = `<button class="act-btn green" onclick="dUpdate(${o.order_id},'delivered')">✅ Delivered</button>
-                 <button class="act-btn ghost" onclick="dUpdate(${o.order_id},'failed')">❌ Failed</button>`;
+    const el = document.getElementById('d-orders');
+    if (!d.orders.length) {
+      el.innerHTML = '<div class="empty"><div class="icon">📦</div>No active deliveries<br><span style="font-size:.85rem">Wait for assignments...</span></div>';
+      return;
     }
-    return `
-    <div class="order-card ${o.status}">
-      <div class="order-head">
-        <span class="order-id">NH-${String(o.order_id).padStart(6,'0')}</span>
-        <span class="amount">${Number(o.total_amount).toLocaleString()} MMK</span>
-      </div>
-      <div class="customer">
-        <div class="cname">${esc(o.customer_name)}</div>
-        <div class="cphone">📞 <a href="tel:${o.customer_phone}" style="color:var(--blue);text-decoration:none">${esc(o.customer_phone)}</a></div>
-      </div>
-      <div class="items">🍜 ${esc(o.items || '')}</div>
-      <div style="font-size:.82rem;color:var(--muted);margin-bottom:.6rem">${statusLabel[o.status] || o.status} · ${o.payment_method}</div>
-      ${o.special_notes ? `<div style="background:var(--surface2);padding:.4rem .6rem;border-radius:8px;font-size:.8rem;margin-bottom:.6rem">📝 ${esc(o.special_notes)}</div>` : ''}
-      <div class="actions">${buttons}
-        <button class="act-btn ghost" onclick="window.open('tel:${o.customer_phone}')">📞 Call</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function dUpdate(orderId, status) {
-  if (status === 'delivered' && !confirm('Delivery completed?')) return;
-  if (status === 'failed' && !confirm('Mark as failed?')) return;
-  try {
-    const r = await fetch('delivery_api.php?action=update_status', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({order_id: orderId, status})
-    });
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.msg);
-    dRefresh();
-  } catch(e) { alert('❌ ' + e.message); }
-}
-
-async function dToggleStatus() {
-  if (!driver) return;
-  const newStatus = driver.status === 'available' ? 'offline' : 'available';
-  try {
-    await fetch('delivery_api.php?action=driver_status', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({driver_id: driver.id, status: newStatus})
-    });
-    driver.status = newStatus;
-    updateStatusBadge();
+    el.innerHTML = d.orders.map(o => {
+      let actions = '';
+      if (o.status === 'assigned') actions = `<button class="action-btn pickup" onclick="dUpdate(${o.id},'picked_up')">📦 Picked Up</button>`;
+      else if (o.status === 'picked_up') actions = `<button class="action-btn deliver" onclick="dUpdate(${o.id},'delivering')">🛵 On The Way</button>`;
+      else if (o.status === 'delivering') actions = `<button class="action-btn complete" onclick="dUpdate(${o.id},'delivered')">✅ Delivered</button>`;
+      return `
+      <div class="order-card ${o.status}">
+        <div class="order-num">NH-${String(o.order_id).padStart(6,'0')}</div>
+        <div class="customer">👤 ${esc(o.customer_name)}</div>
+        <div class="address">📍 ${esc(o.customer_phone || '')} ${esc(o.address_info || '')}</div>
+        <div class="items">🍜 ${esc(o.items || '')}</div>
+        <div class="amount">💰 ${Number(o.total_amount).toLocaleString()} MMK · ${esc(o.payment_method)}</div>
+        <div class="actions">${actions}</div>
+      </div>`;
+    }).join('');
   } catch(e) {}
 }
 
-function dLogout() {
-  if (driver) {
-    fetch('delivery_api.php?action=driver_status', {
+async function dUpdate(trackingId, status) {
+  try {
+    await fetch('delivery_api.php?action=update_status', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({driver_id: driver.id, status: 'offline'})
+      body: JSON.stringify({tracking_id: trackingId, status})
     });
-  }
-  driver = null;
-  clearInterval(pollTimer);
-  document.getElementById('d-main').style.display = 'none';
-  document.getElementById('d-login').style.display = '';
-  document.getElementById('d-pin').value = '';
+    dLoadOrders();
+  } catch(e) {}
 }
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+document.getElementById('d-pin').addEventListener('keydown', e => { if (e.key==='Enter') dLogin(); });
 </script>
 </body>
 </html>
