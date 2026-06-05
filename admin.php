@@ -1053,6 +1053,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('shift')" id="nav-shift">
         <span class="nav-icon">🕐</span> Shifts
       </div>
+      <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
+        <span class="nav-icon">🏢</span> Branches
+      </div>
       <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
         <span class="nav-icon">⚙️</span> Settings
       </div>
@@ -1703,6 +1706,71 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <button onclick="document.getElementById('crm-modal').style.display='none'"
           style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">✕</button>
         <div id="crm-modal-body">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ── BRANCHES PAGE ── -->
+    <div id="page-branches" style="display:none">
+      <div class="page-head">
+        <h1 class="page-title">🏢 Branch Management</h1>
+      </div>
+
+      <!-- Cross-branch Dashboard -->
+      <div id="branch-dashboard" style="margin-bottom:1.5rem"></div>
+
+      <!-- Branch Cards -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <span style="font-weight:700;font-size:1rem">All Branches</span>
+        <button class="btn btn-primary" onclick="branchOpenNew()" style="padding:.5rem 1.2rem">+ New Branch</button>
+      </div>
+      <div id="branch-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem">
+      </div>
+    </div>
+
+    <!-- Branch Create/Edit Modal -->
+    <div id="branch-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);overflow-y:auto">
+      <div style="max-width:480px;margin:2rem auto;background:var(--surface);border-radius:16px;padding:2rem;position:relative">
+        <button onclick="document.getElementById('branch-modal').style.display='none'"
+          style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">✕</button>
+        <div style="font-weight:700;font-size:1.1rem;margin-bottom:1.2rem" id="branch-modal-title">🏢 New Branch</div>
+        <input type="hidden" id="branch-edit-id">
+        <div style="display:flex;flex-direction:column;gap:1rem">
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:.8rem">
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Branch Name *</label>
+              <input id="branch-name" type="text" placeholder="NoodleHaus Mandalay"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Code *</label>
+              <input id="branch-code" type="text" placeholder="MDY1" maxlength="20"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);text-transform:uppercase">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:.82rem;color:var(--text-muted)">Address</label>
+            <input id="branch-address" type="text" placeholder="Street, City"
+              style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem">
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Phone</label>
+              <input id="branch-phone" type="tel" placeholder="09xxx"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Open</label>
+              <input id="branch-open" type="time" value="10:00"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+            <div>
+              <label style="font-size:.82rem;color:var(--text-muted)">Close</label>
+              <input id="branch-close" type="time" value="23:00"
+                style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="branchSave()" style="padding:.7rem;font-size:1rem">✅ Save Branch</button>
+        </div>
       </div>
     </div>
 
@@ -2510,6 +2578,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     <button class="mnav-btn" id="mnav-shift" onclick="showPage('shift')">
       <span class="mnav-icon">🕐</span>Shifts
     </button>
+    <button class="mnav-btn" id="mnav-branches" onclick="showPage('branches')">
+      <span class="mnav-icon">🏢</span>Branches
+    </button>
     <button class="mnav-btn" id="mnav-settings" onclick="showPage('settings')">
       <span class="mnav-icon">⚙️</span>Settings
     </button>
@@ -2633,7 +2704,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -2649,6 +2720,7 @@ function showPage(page) {
   if (page==='shift')      { shiftLoad(); }
   if (page==='stock')      { stockLoad(); }
   if (page==='reserve')    { resLoad(); }
+  if (page==='branches')   { branchLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
@@ -4494,6 +4566,155 @@ async function crmSaveTag(phone) {
     document.getElementById('crm-modal').style.display = 'none';
     crmLoadCustomers();
   } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+/* ═══════════════════════════════════════
+   BRANCHES
+═══════════════════════════════════════ */
+async function branchLoad() {
+  try {
+    const r = await fetch('branch_api.php?action=dashboard');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    branchRenderDashboard(d);
+    branchRenderList(d.branches);
+  } catch(e) {
+    document.getElementById('branch-dashboard').innerHTML =
+      `<div class="card" style="padding:2rem;color:#e74c3c;text-align:center">${e.message}</div>`;
+  }
+}
+
+function branchRenderDashboard(d) {
+  const g = d.grand;
+  document.getElementById('branch-dashboard').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem">
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:1.5rem;font-weight:700">${d.branches.length}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">🏢 Total Branches</div>
+      </div>
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:1.3rem;font-weight:700">${Number(g.total_orders).toLocaleString()}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">📋 All-time Orders</div>
+      </div>
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:1.3rem;font-weight:700">${Number(g.today_orders).toLocaleString()}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">📋 Today Orders</div>
+      </div>
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:1.1rem;font-weight:700">${Number(g.today_revenue).toLocaleString()}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">💰 Today Revenue</div>
+      </div>
+    </div>`;
+}
+
+function branchRenderList(branches) {
+  const el = document.getElementById('branch-list');
+  el.innerHTML = branches.map(b => {
+    const active = parseInt(b.is_active);
+    return `
+    <div class="card" style="padding:1.2rem;${!active?'opacity:.6':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <div>
+          <div style="font-weight:700;font-size:1.05rem">${escHtml(b.name)}</div>
+          <div style="font-size:.82rem;color:var(--text-muted)">📍 ${escHtml(b.code)} ${b.address?'· '+escHtml(b.address):''}</div>
+        </div>
+        <span style="background:${active?'#27ae60':'#e74c3c'};color:#fff;padding:.2rem .6rem;border-radius:12px;font-size:.72rem;font-weight:700">
+          ${active?'Active':'Inactive'}
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem">
+        <div style="background:var(--surface2);border-radius:8px;padding:.6rem;text-align:center">
+          <div style="font-weight:700">${b.today_orders || 0}</div>
+          <div style="font-size:.72rem;color:var(--text-muted)">Today</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:.6rem;text-align:center">
+          <div style="font-weight:700">${Number(b.today_revenue || 0).toLocaleString()}</div>
+          <div style="font-size:.72rem;color:var(--text-muted)">Revenue</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:.6rem;text-align:center">
+          <div style="font-weight:700">${b.total_staff || 0} / ${b.total_menu || 0}</div>
+          <div style="font-size:.72rem;color:var(--text-muted)">Staff/Menu</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost btn-sm" onclick="branchEdit(${b.id})">✏️ Edit</button>
+        ${b.id > 1 ? `<button class="btn btn-ghost btn-sm" onclick="branchToggle(${b.id})">${active?'🚫 Deactivate':'✅ Activate'}</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function branchOpenNew() {
+  document.getElementById('branch-modal').style.display = 'block';
+  document.getElementById('branch-modal-title').textContent = '🏢 New Branch';
+  document.getElementById('branch-edit-id').value = '';
+  document.getElementById('branch-name').value = '';
+  document.getElementById('branch-code').value = '';
+  document.getElementById('branch-address').value = '';
+  document.getElementById('branch-phone').value = '';
+  document.getElementById('branch-open').value = '10:00';
+  document.getElementById('branch-close').value = '23:00';
+}
+
+async function branchEdit(id) {
+  try {
+    const r = await fetch(`branch_api.php?action=detail&id=${id}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    const b = d.branch;
+    document.getElementById('branch-modal').style.display = 'block';
+    document.getElementById('branch-modal-title').textContent = '✏️ Edit Branch';
+    document.getElementById('branch-edit-id').value = b.id;
+    document.getElementById('branch-name').value = b.name;
+    document.getElementById('branch-code').value = b.code;
+    document.getElementById('branch-code').disabled = true;
+    document.getElementById('branch-address').value = b.address || '';
+    document.getElementById('branch-phone').value = b.phone || '';
+    document.getElementById('branch-open').value = (b.opening_time || '10:00').slice(0,5);
+    document.getElementById('branch-close').value = (b.closing_time || '23:00').slice(0,5);
+  } catch(e) { toast('❌ '+e.message,'err'); }
+}
+
+async function branchSave() {
+  const editId = document.getElementById('branch-edit-id').value;
+  const data = {
+    name: document.getElementById('branch-name').value.trim(),
+    code: document.getElementById('branch-code').value.trim().toUpperCase(),
+    address: document.getElementById('branch-address').value.trim(),
+    phone: document.getElementById('branch-phone').value.trim(),
+    opening_time: document.getElementById('branch-open').value,
+    closing_time: document.getElementById('branch-close').value,
+  };
+  if (!data.name || !data.code) { toast('Name and code required','err'); return; }
+
+  try {
+    const action = editId ? 'update' : 'create';
+    if (editId) data.id = parseInt(editId);
+    const r = await fetch(`branch_api.php?action=${action}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    toast('✅ Branch saved');
+    document.getElementById('branch-modal').style.display = 'none';
+    document.getElementById('branch-code').disabled = false;
+    branchLoad();
+  } catch(e) { toast('❌ '+e.message,'err'); }
+}
+
+async function branchToggle(id) {
+  if (!confirm('Branch status ပြောင်းမည် — သေချာပါသလား?')) return;
+  try {
+    const r = await fetch('branch_api.php?action=toggle', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    toast('✅ Updated');
+    branchLoad();
+  } catch(e) { toast('❌ '+e.message,'err'); }
 }
 
 /* ═══════════════════════════════════════
