@@ -2646,18 +2646,8 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
 
 <script>
 
-// ── CSRF Protection ──
+// ── CSRF Token ──
 const CSRF_TOKEN = '<?= $csrfToken ?>';
-const _origFetch = window.fetch;
-window.fetch = function(url, opts = {}) {
-  if (opts.method === 'POST' || opts.method === 'post') {
-    opts.headers = opts.headers || {};
-    if (typeof opts.headers === 'object' && !(opts.headers instanceof Headers)) {
-      opts.headers['X-CSRF-Token'] = CSRF_TOKEN;
-    }
-  }
-  return _origFetch.call(this, url, opts);
-};
 
 // ── Branch Selector ──
 let currentBranchId = 0; // 0 = all branches
@@ -3192,9 +3182,16 @@ async function loadAnalytics(days=7){
 // ══ END ANALYTICS ══
 
 
-// ── Session timeout handler ──
+// ── Session timeout + CSRF handler ──
 const _origFetch = window.fetch;
 window.fetch = async function(...args) {
+  // Inject CSRF token into POST requests
+  if (args[1]?.method?.toUpperCase() === 'POST') {
+    args[1].headers = args[1].headers || {};
+    if (typeof args[1].headers === 'object' && !(args[1].headers instanceof Headers)) {
+      args[1].headers['X-CSRF-Token'] = CSRF_TOKEN;
+    }
+  }
   const res = await _origFetch.apply(this, args);
   if (res.status === 401) {
     const clone = res.clone();
