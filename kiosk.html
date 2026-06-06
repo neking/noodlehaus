@@ -146,6 +146,25 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;ove
   </div>
 </div>
 
+<!-- Modifier Modal -->
+<div id="k-mod-overlay" style="display:none;position:fixed;inset:0;z-index:7000;background:rgba(0,0,0,.6);align-items:flex-end;justify-content:center">
+  <div style="max-width:500px;width:95%;background:var(--surface);border-radius:20px 20px 0 0;padding:1.5rem;max-height:70vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+      <span id="k-mod-emoji" style="font-size:2rem"></span>
+      <div>
+        <div id="k-mod-name" style="font-weight:700;font-size:1.1rem"></div>
+        <div id="k-mod-price" style="color:var(--muted);font-size:.9rem"></div>
+      </div>
+      <button onclick="kModClose()" style="margin-left:auto;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted)">\u2715</button>
+    </div>
+    <div id="k-mod-groups"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <div style="font-weight:700;font-size:1.1rem">Total: <span id="k-mod-total">0</span> MMK</div>
+      <button onclick="kModAdd()" style="padding:.7rem 2rem;background:var(--accent);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:1rem;cursor:pointer">+ Add to Cart</button>
+    </div>
+  </div>
+</div>
+
 <!-- Payment Selection -->
 <div class="pay-overlay" id="k-pay-overlay">
   <div class="pay-card">
@@ -230,16 +249,108 @@ function renderMenu() {
 }
 
 /* ══ CART ══ */
-function addToCart(id) {
+let _kModItem = null;
+let _kModGroups = [];
+let _kModSel = {};
+let _kModCache = {};
+
+async function addToCart(id) {
   const item = menu.find(i => i.id === id);
   if (!item) return;
-  if (cart[id]) {
-    if (cart[id].qty < item.stock) cart[id].qty++;
-  } else {
-    cart[id] = { ...item, qty: 1 };
+
+  // Check for modifiers
+  if (!_kModCache[id]) {
+    try {
+      const r = await fetch('modifier_api.php?action=get_modifiers&item_id=' + id);
+      const d = await r.json();
+      _kModCache[id] = d.ok ? d.groups : [];
+    } catch(e) { _kModCache[id] = []; }
   }
+
+  if (_kModCache[id].length > 0) {
+    kModOpen(item, _kModCache[id]);
+  } else {
+    // No modifiers — add directly
+    if (cart[id]) {
+      if (cart[id].qty < item.stock) cart[id].qty++;
+    } else {
+      cart[id] = { ...item, qty: 1, modifiers: [] };
+    }
+    renderCart();
+    renderMenu();
+  }
+}
+
+function kModOpen(item, groups) {
+  _kModItem = item;
+  _kModGroups = groups;
+  _kModSel = {};
+  groups.forEach(g => { _kModSel[g.id] = new Set(); });
+
+  document.getElementById('k-mod-emoji').textContent = item.emoji || '\ud83c\udf5c';
+  document.getElementById('k-mod-name').textContent = item.name;
+  document.getElementById('k-mod-price').textContent = 'Base: ' + Number(item.price).toLocaleString() + ' MMK';
+  document.getElementById('k-mod-total').textContent = Number(item.price).toLocaleString();
+
+  let html = '';
+  groups.forEach(g => {
+    html += '<div style="margin-bottom:1rem"><div style="font-weight:600;font-size:.9rem;margin-bottom:.5rem">' + esc(g.group_name) + (g.is_required?' *':'') + '</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:.5rem">';
+    g.options.forEach(o => {
+      const extra = o.extra_price > 0 ? ' +' + Number(o.extra_price).toLocaleString() : '';
+      html += '<button class="k-mod-opt" data-gid="' + g.id + '" data-oid="' + o.id + '" data-price="' + o.extra_price + '" data-type="' + g.type + '" onclick="kModToggle(this)" style="padding:.5rem 1rem;border:2px solid var(--border);border-radius:10px;background:var(--surface2);cursor:pointer;font-size:.85rem;font-weight:500;color:var(--text)">' + esc(o.option_name) + extra + '</button>';
+    });
+    html += '</div></div>';
+  });
+  document.getElementById('k-mod-groups').innerHTML = html;
+  document.getElementById('k-mod-overlay').style.display = 'flex';
+}
+
+function kModToggle(btn) {
+  const gid = btn.dataset.gid, oid = btn.dataset.oid, type = btn.dataset.type;
+  if (type === 'single') {
+    _kModSel[gid] = new Set([oid]);
+    btn.parentElement.querySelectorAll('.k-mod-opt').forEach(b => {
+      b.style.borderColor = b.dataset.oid === oid ? 'var(--accent)' : 'var(--border)';
+      b.style.background = b.dataset.oid === oid ? 'rgba(232,76,43,.1)' : 'var(--surface2)';
+    });
+  } else {
+    if (_kModSel[gid].has(oid)) { _kModSel[gid].delete(oid); btn.style.borderColor='var(--border)'; btn.style.background='var(--surface2)'; }
+    else { _kModSel[gid].add(oid); btn.style.borderColor='var(--accent)'; btn.style.background='rgba(232,76,43,.1)'; }
+  }
+  // Update total
+  let extra = 0;
+  document.querySelectorAll('.k-mod-opt').forEach(b => {
+    if (_kModSel[b.dataset.gid]?.has(b.dataset.oid)) extra += parseInt(b.dataset.price) || 0;
+  });
+  document.getElementById('k-mod-total').textContent = Number(_kModItem.price + extra).toLocaleString();
+}
+
+function kModAdd() {
+  if (!_kModItem) return;
+  const modifiers = [];
+  let extraTotal = 0;
+  document.querySelectorAll('.k-mod-opt').forEach(b => {
+    if (_kModSel[b.dataset.gid]?.has(b.dataset.oid)) {
+      modifiers.push({ id: b.dataset.oid, name: b.textContent.trim(), price: parseInt(b.dataset.price)||0 });
+      extraTotal += parseInt(b.dataset.price) || 0;
+    }
+  });
+
+  const key = _kModItem.id + '_' + modifiers.map(m=>m.id).sort().join('-');
+  if (cart[key]) {
+    cart[key].qty++;
+  } else {
+    cart[key] = { ..._kModItem, qty: 1, modifiers, modExtra: extraTotal };
+  }
+  kModClose();
   renderCart();
   renderMenu();
+}
+
+function kModClose() {
+  document.getElementById('k-mod-overlay').style.display = 'none';
+  _kModItem = null;
 }
 
 function changeQty(id, delta) {
@@ -275,7 +386,7 @@ function renderCart() {
       <span class="emoji">${i.emoji}</span>
       <div class="details">
         <div class="item-name">${esc(i.name)}</div>
-        <div class="item-price">${Number(i.price).toLocaleString()} MMK</div>
+        <div class="item-price">${Number(i.price + (i.modExtra||0)).toLocaleString()} MMK${i.modifiers?.length ? ' <span style="font-size:.75rem;color:var(--muted)">+' + i.modifiers.map(m=>m.name).join(', ') + '</span>' : ''}</div>
       </div>
       <div class="qty-controls">
         <button class="qty-btn" onclick="changeQty(${i.id},-1)">−</button>
@@ -301,7 +412,7 @@ async function kSelectPay(method) {
   const items = Object.values(cart).map(i => ({
     item_id: i.id,
     name: i.name,
-    price: i.price,
+    price: i.price + (i.modExtra||0),
     qty: i.qty,
     subtotal: i.price * i.qty,
     modifiers: [],
