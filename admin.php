@@ -358,6 +358,13 @@ if (isset($_GET['api'])) { // GET+POST both handled
             WHERE id=:id
         ")->execute([':reason'=>$reason, ':id'=>$id]);
 
+        // 4. Cancel hooks — stock restore, CRM adjust, delivery cancel, shift remove
+        require_once __DIR__ . '/order_cancel_hooks.php';
+        hookStockRestore($pdo, $id);
+        hookCrmReverse($pdo, $o['customer_phone'] ?? '', (int)($o['total_amount'] ?? 0));
+        hookDeliveryCancel($pdo, $id);
+        hookShiftRemove($pdo, $id);
+
         echo json_encode(['ok'=>true]);
         exit;
     }
