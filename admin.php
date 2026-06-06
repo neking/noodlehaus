@@ -2797,7 +2797,6 @@ function showPage(page) {
   if (page==='reserve')    { resLoad(); }
   if (page==='branches')   { branchLoad(); }
   if (page==='delivery')   { delLoad(); }
-  if (page==='delivery')   { dlvLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
