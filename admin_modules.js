@@ -1,3 +1,11 @@
+/* Shared helpers (needed before admin.php inline defines them) */
+if (typeof escHtml === 'undefined') {
+  window.escHtml = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+}
+if (typeof showToast === 'undefined') {
+  window.showToast = function(msg, isErr) { if (typeof toast === 'function') toast(msg, isErr ? 'err' : 'ok'); };
+}
+
 /* ═══════════════════════════════════════════════════════════════
    NoodleHaus Admin — Phase 5-6 Modules (Split from admin.php)
    CRM · Shift · Stock · Reservations · Branches · Delivery
