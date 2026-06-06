@@ -1727,7 +1727,66 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       </div>
     </div>
 
+    <!-- ── PROMOTIONS PAGE ── -->
+    <div id="page-promos" style="display:none">
+      <div class="page-head"><h1 class="page-title">🎁 Promotions</h1></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <div id="promo-stats" style="display:flex;gap:1rem;flex-wrap:wrap"></div>
+        <button class="btn btn-primary" onclick="promoOpenNew()" style="padding:.5rem 1.2rem">+ New Promotion</button>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+            <th style="padding:.7rem 1rem;text-align:left">Name</th>
+            <th style="padding:.7rem 1rem;text-align:left">Type</th>
+            <th style="padding:.7rem 1rem;text-align:left">Code</th>
+            <th style="padding:.7rem 1rem;text-align:right">Value</th>
+            <th style="padding:.7rem 1rem;text-align:left">Conditions</th>
+            <th style="padding:.7rem 1rem;text-align:center">Used</th>
+            <th style="padding:.7rem 1rem;text-align:center">Status</th>
+            <th style="padding:.7rem 1rem;text-align:center">Actions</th>
+          </tr></thead>
+          <tbody id="promo-tbody"><tr><td colspan="8" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Promo Modal -->
+    <div id="promo-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);overflow-y:auto">
+      <div style="max-width:520px;margin:2rem auto;background:var(--surface);border-radius:16px;padding:2rem;position:relative">
+        <button onclick="document.getElementById('promo-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">✕</button>
+        <div style="font-weight:700;font-size:1.1rem;margin-bottom:1.2rem" id="promo-modal-title">🎁 New Promotion</div>
+        <input type="hidden" id="promo-edit-id">
+        <div style="display:flex;flex-direction:column;gap:.8rem">
+          <input id="promo-name" type="text" placeholder="Promotion name" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <select id="promo-type" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+              <option value="percent_off">% Off</option><option value="fixed_off">Fixed MMK Off</option>
+              <option value="bogo">Buy 1 Get 1</option><option value="combo">Combo Deal</option>
+            </select>
+            <input id="promo-code" type="text" placeholder="Code (empty=auto)" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);text-transform:uppercase">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem">
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Value</label><input id="promo-value" type="number" value="10" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Min Order</label><input id="promo-min" type="number" value="0" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Max Discount</label><input id="promo-max" type="number" placeholder="No cap" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Start Date</label><input id="promo-start" type="date" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+            <div><label style="font-size:.78rem;color:var(--text-muted)">End Date</label><input id="promo-end" type="date" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Happy Hour Start</label><input id="promo-hh-start" type="time" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Happy Hour End</label><input id="promo-hh-end" type="time" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+          </div>
+          <input id="promo-days" type="text" placeholder="Days: mon,tue,wed,thu,fri (empty=all)" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <button class="btn btn-primary" onclick="promoSave()" style="padding:.7rem;font-size:1rem">✅ Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ── DELIVERY PAGE ── -->
+
     <div id="page-delivery" style="display:none">
       <div class="page-head">
         <h1 class="page-title">🛵 Delivery Management</h1>
@@ -2797,6 +2856,7 @@ function showPage(page) {
   if (page==='reserve')    { resLoad(); }
   if (page==='branches')   { branchLoad(); }
   if (page==='delivery')   { delLoad(); }
+  if (page==='promos')     { promoLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
