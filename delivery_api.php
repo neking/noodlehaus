@@ -10,7 +10,8 @@
  *   GET  zones           — delivery zones
  *   POST zone_save       — create/update zone
  *   GET  active          — active delivery orders
- *   POST assign          — assign driver to order
+ *   GET  pending_orders   — unassigned pending orders (awaiting driver)
+ *   POST assign          — assign driver to order (accepts tracking_id OR order_id)
  *   POST update_status   — driver updates delivery status
  *   POST auto_track      — order_handler hook: create tracking for delivery orders
  *   GET  driver_orders   — driver's current assignments (driver app)
@@ -123,19 +124,62 @@ if ($action === 'active') {
 }
 
 
+/* ── PENDING ORDERS (unassigned — awaiting driver) ── */
+if ($action === 'pending_orders') {
+    requireAdmin();
+    $rows = $pdo->prepare("
+        SELECT dt.id AS tracking_id, dt.order_id, dt.status, dt.created_at,
+               o.customer_name, o.customer_phone, o.total_amount,
+               o.payment_method, o.special_notes,
+               GROUP_CONCAT(oi.item_name,' x',oi.qty ORDER BY oi.id SEPARATOR ', ') AS items
+        FROM delivery_tracking dt
+        JOIN orders o ON o.id = dt.order_id
+        LEFT JOIN order_items oi ON oi.order_id = o.id
+        WHERE dt.status = 'pending'
+          AND dt.driver_id IS NULL
+          AND o.deleted_at IS NULL
+        GROUP BY dt.id
+        ORDER BY dt.created_at ASC
+    ");
+    $rows->execute();
+    ok(['orders' => $rows->fetchAll(PDO::FETCH_ASSOC)]);
+}
+
+
 /* ── ASSIGN DRIVER ── */
 if ($action === 'assign' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     requireAdmin();
     $d = json_decode(file_get_contents('php://input'), true) ?? [];
-    $trackingId = (int)($d['tracking_id'] ?? 0);
     $driverId   = (int)($d['driver_id'] ?? 0);
-    if (!$trackingId || !$driverId) fail('tracking_id and driver_id required');
+    if (!$driverId) fail('driver_id required');
+
+    // Accept either tracking_id (direct) or order_id (from dlvAssign in admin_modules.js)
+    $trackingId = (int)($d['tracking_id'] ?? 0);
+    if (!$trackingId && isset($d['order_id'])) {
+        $r = $pdo->prepare("SELECT id FROM delivery_tracking WHERE order_id=?");
+        $r->execute([(int)$d['order_id']]);
+        $trackingId = (int)$r->fetchColumn();
+        // Auto-create tracking row if order exists but has no tracking yet
+        if (!$trackingId) {
+            $chk = $pdo->prepare("SELECT id FROM orders WHERE id=? AND deleted_at IS NULL");
+            $chk->execute([(int)$d['order_id']]);
+            if (!$chk->fetchColumn()) fail('Order not found');
+            $pdo->prepare("INSERT INTO delivery_tracking (order_id) VALUES (?)")->execute([(int)$d['order_id']]);
+            $trackingId = (int)$pdo->lastInsertId();
+        }
+    }
+    if (!$trackingId) fail('tracking_id or order_id required');
 
     $pdo->prepare("UPDATE delivery_tracking SET driver_id=?, status='assigned', assigned_at=NOW() WHERE id=?")
         ->execute([$driverId, $trackingId]);
     $pdo->prepare("UPDATE drivers SET status='busy' WHERE id=?")->execute([$driverId]);
 
-    ok(['assigned' => true]);
+    // Return driver name for toast message
+    $drv = $pdo->prepare("SELECT name FROM drivers WHERE id=?");
+    $drv->execute([$driverId]);
+    $driverName = $drv->fetchColumn() ?: 'Driver';
+
+    ok(['assigned' => true, 'driver_name' => $driverName]);
 }
 
 
