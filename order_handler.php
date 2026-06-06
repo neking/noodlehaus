@@ -25,6 +25,37 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST')    { jsonError('Method not allowed', 
 require_once __DIR__ . '/db_connect.php';
 $pdo = getPDO();
 
+// ── Customer Cancel (within 2 min) ──
+if (($_GET['action'] ?? '') === 'cancel') {
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+    $orderId = (int)($body['order_id'] ?? 0);
+    $phone   = trim($body['phone'] ?? '');
+    if (!$orderId) jsonError('order_id required');
+
+    $order = $pdo->prepare("
+        SELECT * FROM orders
+        WHERE id = ? AND deleted_at IS NULL AND customer_phone = ?
+          AND created_at >= NOW() - INTERVAL 2 MINUTE
+    ");
+    $order->execute([$orderId, $phone]);
+    $o = $order->fetch(PDO::FETCH_ASSOC);
+    if (!$o) jsonError('Order not found or cancel window expired (2 min)');
+
+    // Soft delete
+    $pdo->prepare("UPDATE orders SET deleted_at=NOW(), delete_reason='Customer cancelled', deleted_by='customer' WHERE id=?")
+        ->execute([$orderId]);
+
+    // Reverse hooks
+    require_once __DIR__ . '/order_cancel_hooks.php';
+    hookStockRestore($pdo, $orderId);
+    hookCrmReverse($pdo, $o['customer_phone'], (int)$o['total_amount']);
+    hookDeliveryCancel($pdo, $orderId);
+    hookShiftRemove($pdo, $orderId);
+
+    echo json_encode(['success' => true, 'message' => 'Order cancelled']);
+    exit;
+}
+
 $raw  = file_get_contents('php://input');
 $body = json_decode($raw, true);
 if (json_last_error() !== JSON_ERROR_NONE) jsonError('Invalid JSON');
