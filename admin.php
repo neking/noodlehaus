@@ -1727,7 +1727,48 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       </div>
     </div>
 
-    <!-- ── EXPENSES PAGE ── -->
+    <!-- __ SCHEDULE PAGE __ -->
+    <div id="page-schedule" style="display:none">
+      <div class="page-head"><h1 class="page-title">📆 Staff Schedule</h1></div>
+      <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="schedPrevWeek()">◀ Prev</button>
+        <span id="sched-week-label" style="font-weight:700"></span>
+        <button class="btn btn-ghost btn-sm" onclick="schedNextWeek()">Next ▶</button>
+        <div id="sched-cost" style="margin-left:auto;font-size:.85rem;color:var(--text-muted)"></div>
+        <button class="btn btn-primary" onclick="schedOpenAssign()" style="padding:.5rem 1rem">+ Assign Shift</button>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead><tr id="sched-header" style="background:var(--surface2);border-bottom:1px solid var(--border)"></tr></thead>
+          <tbody id="sched-tbody"><tr><td colspan="8" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Schedule Assign Modal -->
+    <div id="sched-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6)">
+      <div style="max-width:420px;margin:2rem auto;background:var(--surface);border-radius:16px;padding:2rem;position:relative">
+        <button onclick="document.getElementById('sched-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">&#10005;</button>
+        <div style="font-weight:700;font-size:1.1rem;margin-bottom:1rem">📆 Assign Shift</div>
+        <div style="display:flex;flex-direction:column;gap:.8rem">
+          <select id="sched-staff" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></select>
+          <input id="sched-date" type="date" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Start</label><input id="sched-start" type="time" value="09:00" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+            <div><label style="font-size:.78rem;color:var(--text-muted)">End</label><input id="sched-end" type="time" value="17:00" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <select id="sched-role" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+              <option value="waiter">Waiter</option><option value="kitchen">Kitchen</option><option value="cashier">Cashier</option><option value="manager">Manager</option>
+            </select>
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Rate/hr</label><input id="sched-rate" type="number" value="1500" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+          </div>
+          <button class="btn btn-primary" onclick="schedSave()" style="padding:.7rem;font-size:1rem">✅ Assign</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- __ EXPENSES PAGE __ -->
     <div id="page-expenses" style="display:none">
       <div class="page-head"><h1 class="page-title">💼 Expense Tracking</h1></div>
       <div id="exp-pnl" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem"></div>
@@ -2912,6 +2953,7 @@ function showPage(page) {
   if (page==='delivery')   { delLoad(); }
   if (page==='promos')     { promoLoad(); }
   if (page==='expenses')   { expLoad(); }
+  if (page==='schedule')   { schedLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
