@@ -1727,7 +1727,61 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       </div>
     </div>
 
-    <!-- ── PROMOTIONS PAGE ── -->
+    <!-- ── EXPENSES PAGE ── -->
+    <div id="page-expenses" style="display:none">
+      <div class="page-head"><h1 class="page-title">💼 Expense Tracking</h1></div>
+      <div id="exp-pnl" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem"></div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center">
+        <input id="exp-month" type="month" onchange="expLoad()" style="padding:.5rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+        <select id="exp-cat-filter" onchange="expLoad()" style="padding:.5rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <option value="">All Categories</option>
+          <option value="ingredients">🥬 Ingredients</option><option value="packaging">📦 Packaging</option>
+          <option value="utilities">⚡ Utilities</option><option value="rent">🏠 Rent</option>
+          <option value="salary">👥 Salary</option><option value="equipment">🔧 Equipment</option>
+          <option value="marketing">📢 Marketing</option><option value="other">📌 Other</option>
+        </select>
+        <button class="btn btn-primary" onclick="expOpenNew()" style="margin-left:auto;padding:.5rem 1.2rem">+ Add Expense</button>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+            <th style="padding:.7rem 1rem;text-align:left">Date</th>
+            <th style="padding:.7rem 1rem;text-align:left">Category</th>
+            <th style="padding:.7rem 1rem;text-align:left">Description</th>
+            <th style="padding:.7rem 1rem;text-align:left">Supplier</th>
+            <th style="padding:.7rem 1rem;text-align:right">Amount</th>
+            <th style="padding:.7rem 1rem;text-align:center">Actions</th>
+          </tr></thead>
+          <tbody id="exp-tbody"><tr><td colspan="6" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Expense Modal -->
+    <div id="exp-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);overflow-y:auto">
+      <div style="max-width:450px;margin:2rem auto;background:var(--surface);border-radius:16px;padding:2rem;position:relative">
+        <button onclick="document.getElementById('exp-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">&#10005;</button>
+        <div style="font-weight:700;font-size:1.1rem;margin-bottom:1.2rem">💼 Add Expense</div>
+        <div style="display:flex;flex-direction:column;gap:.8rem">
+          <select id="exp-category" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+            <option value="ingredients">🥬 Ingredients</option><option value="packaging">📦 Packaging</option>
+            <option value="utilities">⚡ Utilities</option><option value="rent">🏠 Rent</option>
+            <option value="salary">👥 Salary</option><option value="equipment">🔧 Equipment</option>
+            <option value="marketing">📢 Marketing</option><option value="other">📌 Other</option>
+          </select>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Amount (MMK)</label><input id="exp-amount" type="number" min="0" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+            <div><label style="font-size:.78rem;color:var(--text-muted)">Date</label><input id="exp-date" type="date" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"></div>
+          </div>
+          <input id="exp-desc" type="text" placeholder="Description" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <select id="exp-supplier" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)"><option value="">No supplier</option></select>
+          <input id="exp-ref" type="text" placeholder="Receipt ref (optional)" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <button class="btn btn-primary" onclick="expSave()" style="padding:.7rem;font-size:1rem">✅ Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- __ PROMOTIONS PAGE __ -->
     <div id="page-promos" style="display:none">
       <div class="page-head"><h1 class="page-title">🎁 Promotions</h1></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
@@ -2857,6 +2911,7 @@ function showPage(page) {
   if (page==='branches')   { branchLoad(); }
   if (page==='delivery')   { delLoad(); }
   if (page==='promos')     { promoLoad(); }
+  if (page==='expenses')   { expLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
