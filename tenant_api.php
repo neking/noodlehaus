@@ -60,10 +60,10 @@ if ($action === 'signup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $pdo->prepare("INSERT INTO branches (name,code) VALUES (?,?)")
         ->execute([$name, strtoupper($slug)]);
 
-    // Create admin staff with hashed password
-    $hashedPass = password_hash($pass, PASSWORD_DEFAULT);
+    // Create admin staff with PIN (first 4 digits of phone as default PIN)
+    $pin = substr(preg_replace('/[^0-9]/', '', $phone), -4) ?: '0000';
     $pdo->prepare("INSERT INTO staff (name,role,pin,is_active,branch_id) VALUES (?,'manager',?,1,?)")
-        ->execute([$owner, $hashedPass, $tenantId]);
+        ->execute([$owner, $pin, 1]);
 
     ok(['tenant_id'=>$tenantId, 'slug'=>$slug, 'message'=>'Account created! Login at admin.php']);
 }
