@@ -1074,6 +1074,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
         <span class="nav-icon">🏢</span> Branches
       </div>
+      <div class="nav-item" onclick="showPage('saas')" id="nav-saas">
+        <span class="nav-icon">🌐</span> SaaS
+      </div>
       <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
         <span class="nav-icon">⚙️</span> Settings
       </div>
@@ -1974,6 +1977,30 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           </div>
           <button class="btn btn-primary" onclick="branchSave()" style="padding:.7rem;font-size:1rem">✅ Save Branch</button>
         </div>
+      </div>
+    </div>
+
+        <!-- __ SAAS ADMIN __ -->
+    <div id="page-saas" style="display:none">
+      <div class="page-head"><h1 class="page-title">🌐 SaaS Dashboard</h1></div>
+      <div id="saas-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <span style="font-weight:700">Tenants</span>
+        <a href="signup.html" target="_blank" class="btn btn-primary" style="padding:.5rem 1rem;text-decoration:none">📋 Signup Page</a>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+            <th style="padding:.7rem 1rem;text-align:left">Tenant</th>
+            <th style="padding:.7rem 1rem;text-align:left">Owner</th>
+            <th style="padding:.7rem 1rem;text-align:center">Plan</th>
+            <th style="padding:.7rem 1rem;text-align:right">Orders</th>
+            <th style="padding:.7rem 1rem;text-align:right">Revenue</th>
+            <th style="padding:.7rem 1rem;text-align:center">Status</th>
+            <th style="padding:.7rem 1rem;text-align:center">Actions</th>
+          </tr></thead>
+          <tbody id="saas-tbody"><tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
       </div>
     </div>
 
@@ -2954,6 +2981,7 @@ function showPage(page) {
   if (page==='promos')     { promoLoad(); }
   if (page==='expenses')   { expLoad(); }
   if (page==='schedule')   { schedLoad(); }
+  if (page==='saas')       { saasLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
   // Scroll to top
