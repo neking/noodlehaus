@@ -57,8 +57,8 @@ if ($action === 'signup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $tenantId = (int)$pdo->lastInsertId();
 
     // Auto-provision: create branch + admin staff
-    $pdo->prepare("INSERT INTO branches (name,code,branch_id) VALUES (?,?,?)")
-        ->execute([$name, strtoupper($slug), $tenantId]);
+    $pdo->prepare("INSERT INTO branches (name,code) VALUES (?,?)")
+        ->execute([$name, strtoupper($slug)]);
 
     // Create admin staff with hashed password
     $hashedPass = password_hash($pass, PASSWORD_DEFAULT);
