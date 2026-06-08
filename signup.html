@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NoodleHaus — Start Your Restaurant</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:#faf8f5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+.card{background:#fff;border-radius:20px;max-width:520px;width:100%;padding:2.5rem;box-shadow:0 4px 24px rgba(0,0,0,.06)}
+.logo{text-align:center;margin-bottom:2rem}
+.logo h1{font-size:1.8rem;color:#2a2520} .logo h1 span{color:#e84c2b}
+.logo p{color:#888;font-size:.9rem;margin-top:.3rem}
+label{font-size:.82rem;color:#888;display:block;margin-bottom:.3rem;margin-top:1rem}
+input,select{width:100%;padding:.7rem 1rem;border:1.5px solid #e8e4dc;border-radius:10px;font-size:.95rem;font-family:inherit;background:#faf8f5;color:#2a2520;transition:border .2s}
+input:focus,select:focus{outline:none;border-color:#e84c2b}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.plans{display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem;margin-top:.5rem}
+.plan{border:2px solid #e8e4dc;border-radius:12px;padding:.8rem;cursor:pointer;text-align:center;transition:all .2s}
+.plan.active{border-color:#e84c2b;background:rgba(232,76,43,.05)}
+.plan .name{font-weight:700;font-size:.95rem} .plan .price{color:#e84c2b;font-weight:700;font-size:1.1rem;margin:.2rem 0}
+.plan .desc{font-size:.75rem;color:#888}
+.btn{width:100%;padding:.9rem;background:#2a2520;color:#fff;border:none;border-radius:12px;font-size:1.05rem;font-weight:700;cursor:pointer;margin-top:1.5rem;transition:transform .15s}
+.btn:active{transform:scale(.98)}
+.msg{text-align:center;margin-top:1rem;font-size:.9rem;padding:.8rem;border-radius:10px;display:none}
+.msg.ok{display:block;background:#eafaf0;color:#27ae60} .msg.err{display:block;background:#fdeaea;color:#e74c3c}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>🍜 Noodle<span>Haus</span></h1>
+    <p>Start your restaurant in 60 seconds</p>
+  </div>
+
+  <div class="row">
+    <div><label>Business Name *</label><input id="s-name" placeholder="My Noodle Shop"></div>
+    <div><label>URL Slug *</label><input id="s-slug" placeholder="mynoodleshop" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9]/g,'')"></div>
+  </div>
+  <div class="row">
+    <div><label>Your Name *</label><input id="s-owner" placeholder="Full name"></div>
+    <div><label>Phone *</label><input id="s-phone" placeholder="09xxxxxxxxx"></div>
+  </div>
+  <label>Email *</label><input id="s-email" type="email" placeholder="you@email.com">
+  <label>Password *</label><input id="s-pass" type="password" placeholder="6+ characters">
+
+  <label>Choose Plan</label>
+  <div class="plans" id="s-plans"></div>
+
+  <button class="btn" onclick="doSignup()">🚀 Create My Restaurant</button>
+  <div id="s-msg" class="msg"></div>
+</div>
+
+<script>
+let selectedPlan = 'free';
+
+fetch('tenant_api.php?action=plans').then(r=>r.json()).then(d=>{
+  if (!d.ok) return;
+  document.getElementById('s-plans').innerHTML = d.plans.map(p => {
+    const features = JSON.parse(p.features||'{}');
+    const desc = Object.entries(features).filter(([k,v])=>v).map(([k])=>k).join(', ');
+    return `<div class="plan ${p.code==='free'?'active':''}" onclick="pickPlan('${p.code}',this)">
+      <div class="name">${p.name}</div>
+      <div class="price">${p.price_mmk>0?Number(p.price_mmk).toLocaleString()+' MMK/mo':'Free'}</div>
+      <div class="desc">${p.max_staff} staff · ${p.max_menu_items} items · ${p.max_branches} branch</div>
+    </div>`;
+  }).join('');
+});
+
+function pickPlan(code, el) {
+  selectedPlan = code;
+  document.querySelectorAll('.plan').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+async function doSignup() {
+  const msg = document.getElementById('s-msg');
+  msg.className = 'msg'; msg.style.display = 'none';
+  try {
+    const r = await fetch('tenant_api.php?action=signup', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name: document.getElementById('s-name').value.trim(),
+        slug: document.getElementById('s-slug').value.trim(),
+        owner_name: document.getElementById('s-owner').value.trim(),
+        owner_email: document.getElementById('s-email').value.trim(),
+        owner_phone: document.getElementById('s-phone').value.trim(),
+        password: document.getElementById('s-pass').value,
+        plan: selectedPlan
+      })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.msg);
+    msg.className = 'msg ok';
+    msg.innerHTML = '✅ Account created! Tenant ID: <strong>' + d.tenant_id + '</strong><br>Slug: <strong>' + d.slug + '</strong>';
+    msg.style.display = 'block';
+  } catch(e) {
+    msg.className = 'msg err'; msg.textContent = '❌ ' + e.message;
+    msg.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>
