@@ -61,6 +61,13 @@ NoodleHaus POS is a full-stack restaurant management platform covering every rol
 - ✅ **6B — Multi-Branch**: Branch profiles, cross-branch dashboard, per-branch filtering, branch selector
 - ✅ **6C — Delivery Platform**: Driver management, delivery zones, order assignment, driver app, external webhook API
 
+
+### Phase 8: SaaS Platform
+- ✅ **8A — Multi-tenant**: Tenant isolation, tenant_id routing, plan-based limits
+- ✅ **8B — Self-signup**: `/signup.html` — 60-second onboarding, auto-provisioning (branch + staff)
+- ✅ **8C — Billing**: Plan management (Free/Basic/Pro/Enterprise), billing records, SaaS revenue tracking
+- ✅ **8D — Play Store**: PWA manifest + TWA config for Google Play Store submission
+
 ---
 
 ## 🏗️ Architecture
@@ -98,6 +105,9 @@ NoodleHaus POS is a full-stack restaurant management platform covering every rol
 ├── branch_api.php          # Multi-branch API
 ├── delivery_api.php        # Delivery platform API
 │
+├── tenant_api.php          # SaaS tenant management API
+├── signup.html             # Self-service SaaS signup
+├── twa-manifest.json       # Play Store TWA config
 ├── auth_helper.php         # CSRF token + auth utilities
 ├── db_connect.php          # Database connection
 ├── track.php               # Order tracking API
@@ -141,6 +151,9 @@ NoodleHaus POS is a full-stack restaurant management platform covering every rol
 | `branches` | Multi-branch profiles |
 | `drivers` | Delivery drivers |
 | `delivery_zones` | Delivery fee zones |
+| `tenants` | SaaS client accounts |
+| `saas_plans` | Subscription plan definitions |
+| `billing` | Payment/subscription records |
 | `delivery_tracking` | Order delivery status tracking |
 
 ---
