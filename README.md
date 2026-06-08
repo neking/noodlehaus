@@ -193,20 +193,6 @@ mysql -u root noodlehaus < fix_collation.sql
 # PHP-FPM → ensure socket matches nginx config
 ```
 
-### Staff PINs (default)
-| Staff | PIN | Role |
-|-------|-----|------|
-| Ko Aung | 1234 | Waiter |
-| Ma Aye | 5678 | Waiter |
-| Manager | 0000 | Manager |
-
-### Driver PINs (default)
-| Driver | PIN |
-|--------|-----|
-| Ko Thura | 1111 |
-| Mg Zaw | 2222 |
-| Ko Htet | 3333 |
-
 ---
 
 ## 🛡️ Security
