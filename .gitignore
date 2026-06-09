@@ -5,3 +5,15 @@ uploads/kpay/*
 !uploads/.gitkeep
 *.log
 .env
+
+# Security
+.env
+.env.*
+
+# Uploads (use CDN/S3 instead)
+uploads/menu/
+
+# Temp files
+patch_*.php
+/tmp/
+*.log
