@@ -1,6 +1,6 @@
 <?php
 define('DB_HOST','localhost'); define('DB_PORT','3306');
-define('DB_NAME','noodlehaus'); define('DB_USER','root'); define('DB_PASS','');
+define('DB_NAME','noodlehaus'); define('DB_USER','root'); define('DB_PASS','GGttgg123!');
 define('DB_CHARSET','utf8mb4');
 function getPDO(): PDO {
     static $pdo = null;

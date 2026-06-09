@@ -126,6 +126,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;ove
     <div class="header">
       <div class="logo">🍜 <span>NoodleHaus</span></div>
       <div class="table-badge" id="k-table">Table —</div>
+      <button id="lang-toggle" onclick="toggleLang()" style="background:none;border:1px solid #ddd;border-radius:20px;padding:.2rem .8rem;font-size:.8rem;cursor:pointer;color:#555">မြန်မာ</button>
     </div>
     <div class="cats" id="k-cats"></div>
     <div class="menu-scroll">
@@ -140,7 +141,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;ove
       <div class="cart-empty"><div class="icon">👆</div>Tap items to add</div>
     </div>
     <div class="cart-footer">
-      <div class="cart-total"><span>Total</span><span id="k-total">0 MMK</span></div>
+      <div class="cart-total"><span>Total</span><span id="k-total">$0</span></div>
       <button class="order-btn" id="k-order-btn" onclick="kShowPay()" disabled>Place Order →</button>
     </div>
   </div>
@@ -159,7 +160,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;ove
     </div>
     <div id="k-mod-groups"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
-      <div style="font-weight:700;font-size:1.1rem">Total: <span id="k-mod-total">0</span> MMK</div>
+      <div style="font-weight:700;font-size:1.1rem">Total: <span id="k-mod-total">$0</span></div>
       <button onclick="kModAdd()" style="padding:.7rem 2rem;background:var(--accent);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:1rem;cursor:pointer">+ Add to Cart</button>
     </div>
   </div>
@@ -196,6 +197,16 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;ove
 <script>
 /* ══ CONFIG ══ */
 const TABLE = new URLSearchParams(location.search).get('table') || '';
+let currentLang = 'mm';
+const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:2});
+const catMM = {'All':'အကုန်လုံး','Starters':'ဆိုင်ဖွင့်မုန့်','Drinks':'အဖျော်ယမကာ','Desserts':'နှစ်သက်ဖွယ်','Noodles':'ခေါက်ဆွဲ','Rice':'ထမင်းတွဲ','Soups':'ဟင်းရည်','Snacks':'သရေစာ','Beverages':'အဖျော်','Coffee':'ကော်ဖီ','Tea':'လက်ဖက်ရည်'};
+function toggleLang(){
+  currentLang = currentLang==='mm' ? 'en' : 'mm';
+  document.getElementById('lang-toggle').textContent = currentLang==='mm' ? 'မြန်မာ' : 'EN';
+  renderCats();
+  renderMenu();
+}
+function catLabel(c){ return currentLang==='mm' ? (catMM[c]||c) : c; }
 let menu = [], cart = {}, categories = [];
 
 /* ══ INIT ══ */
@@ -218,8 +229,8 @@ async function init() {
 let activeCat = 'All';
 function renderCats() {
   const el = document.getElementById('k-cats');
-  el.innerHTML = `<button class="cat-btn active" onclick="filterCat('All')">All</button>` +
-    categories.map(c => `<button class="cat-btn" onclick="filterCat('${esc(c)}')">${esc(c)}</button>`).join('');
+  el.innerHTML = `<button class="cat-btn ${activeCat==='All'?'active':''}" onclick="filterCat('All')">${catLabel('All')}</button>` +
+    categories.map(c => `<button class="cat-btn ${activeCat===c?'active':''}" onclick="filterCat('${esc(c)}')">${catLabel(c)}</button>`).join('');
 }
 function filterCat(cat) {
   activeCat = cat;
@@ -235,15 +246,15 @@ function renderMenu() {
   const inCart = Object.values(cart).some(c => c.id === item.id);
   const cartQty = Object.values(cart).filter(c => c.id === item.id).reduce((s,c)=>s+c.qty,0);
     const imgHtml = item.image_path
-      ? `<img src="uploads/${item.image_path}" alt="" loading="lazy">`
+      ? `<img src="${item.image_path}" alt="" loading="lazy">`
       : item.emoji || '🍽️';
     return `
     <div class="menu-card ${inCart ? 'in-cart' : ''}" onclick="addToCart(${item.id})">
       <div class="img">${imgHtml}</div>
       <div class="info">
         <div class="name">${esc(item.name)}</div>
-        ${item.stock <= 5 ? `<div class="stock-low">Only ${item.stock} left</div>` : ''}
-        <div class="price">${Number(item.price).toLocaleString()} MMK</div>
+        ${item.stock <= 5 ? `<div class="stock-low">${currentLang==="mm"?item.stock+" ခု ကျန်":"Only "+item.stock+" left"}</div>` : ''}
+        <div class="price">${fmt(item.price)}</div>
       </div>
       ${inCart ? `<div style="background:var(--accent);color:#fff;text-align:center;padding:.3rem;font-weight:700;font-size:.85rem">× ${cartQty} in cart</div>` : ''}
     </div>`;
@@ -300,8 +311,8 @@ function kModOpen(item, groups) {
 
   document.getElementById('k-mod-emoji').textContent = item.emoji || '\ud83c\udf5c';
   document.getElementById('k-mod-name').textContent = item.name;
-  document.getElementById('k-mod-price').textContent = 'Base: ' + Number(item.price).toLocaleString() + ' MMK';
-  document.getElementById('k-mod-total').textContent = Number(item.price).toLocaleString();
+  document.getElementById('k-mod-price').textContent = 'Base: ' + fmt(item.price);
+  document.getElementById('k-mod-total').textContent = fmt(item.price);
 
   let html = '';
   groups.forEach(g => {
@@ -448,13 +459,13 @@ function renderCart() {
 
   if (!items.length) {
     el.innerHTML = '<div class="cart-empty"><div class="icon">👆</div>Tap items to add</div>';
-    totalEl.textContent = '0 MMK';
+    totalEl.textContent = '$0';
     btn.disabled = true;
     return;
   }
 
   const total = items.reduce((s, i) => s + (i.price) * i.qty, 0);
-  totalEl.textContent = Number(total).toLocaleString() + ' MMK';
+  totalEl.textContent = fmt(total);
   btn.disabled = false;
 
   el.innerHTML = items.map(i => {
@@ -465,7 +476,7 @@ function renderCart() {
       <span class="emoji">${i.emoji || '🍽️'}</span>
       <div class="details">
         <div class="item-name">${esc(i.name)}</div>
-        <div class="item-price">${Number(i.price).toLocaleString()} MMK${modText ? ' <span style="font-size:.75rem;color:var(--accent)">· ' + esc(modText) + '</span>' : ''}</div>
+        <div class="item-price">${fmt(i.price)}${modText ? ' <span style="font-size:.75rem;color:var(--accent)">· ' + esc(modText) + '</span>' : ''}</div>
       </div>
       <div class="qty-controls">
         <button class="qty-btn" onclick="changeQty('${cartKey}',-1)">−</button>
@@ -504,7 +515,7 @@ async function kSelectPay(method) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         device_id: 'kiosk-' + (TABLE || 'walkin'),
-        order_type: TABLE ? 'dine_in' : 'takeaway',
+        order_type: 'dine_in',
         table_id: TABLE || '',
         customer: { name: 'Kiosk Guest', phone: '', address: '', township: '', city: '', notes: '' },
         payment_method: method,

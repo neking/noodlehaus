@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ── CLOCK ── */
 setInterval(() => {
   document.getElementById('clk').textContent =
-    new Date().toLocaleTimeString('en-GB');
+    function(){var n=new Date();return('0'+(n.getHours()%12||12)).slice(-2)+':'+('0'+n.getMinutes()).slice(-2)+':'+('0'+n.getSeconds()).slice(-2)+' '+( n.getHours()>=12?'PM':'AM')}();
 }, 1000);
 
 
@@ -292,7 +292,7 @@ function render() {
     return;
   }
   const ord = {pending:0, preparing:1, ready:2};
-  active.sort((a,b) => (ord[a.status]??9)-(ord[b.status]??9) || new Date(a.time)-new Date(b.time));
+  active.sort((a,b) => (ord[a.status]??9)-(ord[b.status]??9) || new Date(a.time.replace(' ','T')+'Z')-new Date(b.time.replace(' ','T')+'Z'));
   grid.innerHTML = active.map(ticketHTML).join('');
   resetTimerInterval();
 }
@@ -314,7 +314,7 @@ function upsertTicket(o) {
 
 /* ── TICKET HTML ── */
 function ticketHTML(o) {
-  const serverTime = o.time ? new Date(o.time.replace(' ','T') + 'Z') : new Date();
+  const serverTime = o.time ? new Date(o.time.replace(' ','T')+'Z') : new Date();
   const mins = Math.floor((Date.now() - serverTime) / 60000);
   const over = mins > 20;
   const items = (o.items || []).map(i => {
@@ -350,7 +350,7 @@ function ticketHTML(o) {
     <div class="ticket ${o.status}" id="tk-${o.kds_id}">
       <div class="th">
         <span class="tid">${o.order_ref}</span>
-        <span class="ttime">${new Date(o.time.replace(' ','T')+'Z').toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
+        <span class="ttime">${function(){var d=new Date(o.time.replace(' ','T')+'Z');return('0'+(d.getHours()%12||12)).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+' '+(d.getHours()>=12?'PM':'AM')}()}</span>
       </div>
       <div class="tcust">
         ${o.customer}
@@ -451,7 +451,7 @@ function resetTimerInterval() {
   clearInterval(timerInt);
   timerInt = setInterval(() => {
     document.querySelectorAll('[id^="tmr-"]').forEach(el => {
-      const serverTime = el.dataset.time ? new Date(el.dataset.time.replace(' ','T') + 'Z') : new Date();
+      const serverTime = el.dataset.time ? new Date(el.dataset.time.replace(' ','T')+'Z') : new Date();
       const mins = Math.floor((Date.now() - serverTime) / 60000);
       const over = mins > 20;
       el.textContent = `⏱ ${mins}m ago${over?' — OVERDUE':''}`;

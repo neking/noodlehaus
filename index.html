@@ -821,7 +821,15 @@ header{
           <button class="btn-new" onclick="newOrder()">+ New Order</button>
           <button onclick="showLoyaltyCard(document.getElementById('f-phone')?.value?.trim())" style="margin-top:.5rem;width:100%;padding:.65rem;background:none;border:1.5px solid #e84c2b;color:#e84c2b;border-radius:10px;font-size:.88rem;cursor:pointer;font-weight:600">🎟 Stamp Card ကြည့်မည်</button>
           <button onclick="printCustomerReceipt()" style="margin-top:.4rem;width:100%;padding:.65rem;background:none;border:1.5px solid #888;color:#888;border-radius:10px;font-size:.88rem;cursor:pointer">🖨️ Receipt ထုတ်မည်</button>
-          <button onclick="openCustHist()" style="margin-top:.4rem;width:100%;padding:.65rem;background:none;border:1.5px solid #888;color:#888;border-radius:10px;font-size:.88rem;cursor:pointer">📋 Order History ကြည့်</button>
+          <button onclick="toggleInlineHist()" style="margin-top:.4rem;width:100%;padding:.65rem;background:none;border:1.5px solid #888;color:#888;border-radius:10px;font-size:.88rem;cursor:pointer">📋 Order History ကြည့်</button>
+        </div>
+        <!-- Inline Order History -->
+        <div id="inline-hist" style="display:none;margin-top:1rem;text-align:left;border-top:1px solid #eee;padding-top:1rem">
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+            <input type="text" id="ih-phone" placeholder="09xxxxxxxxx" style="flex:1;padding:.45rem .7rem;border:1px solid #ddd;border-radius:8px;font-size:.85rem">
+            <button onclick="loadInlineHist()" style="padding:.45rem .8rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem">Search</button>
+          </div>
+          <div id="ih-result" style="font-size:.82rem;max-height:220px;overflow-y:auto"></div>
         </div>
       </div>
     </div>
@@ -961,7 +969,7 @@ async function loadMenu() {
 ═══════════════════════════════════════ */
 function renderCats() {
   document.getElementById('categories').innerHTML = cats.map(cat =>
-    `<button class="cat-btn${cat===activeCat?' active':''}" onclick="filterCat('${cat}')">${cat}</button>`
+    `<button class="cat-btn${cat===activeCat?' active':''}" onclick="filterCat('${cat}')">${(window._catT&&window._catT[cat])||cat}</button>`
   ).join('');
 }
 
@@ -969,7 +977,7 @@ function filterCat(cat) {
   activeCat = cat;
   renderCats();
   renderMenu();
-  document.getElementById('menu-title').textContent = cat === 'All' ? 'All Menu' : cat;
+  document.getElementById('menu-title').textContent = cat === 'All' ? (currentLang==='mm'?'အကုန်လုံး':'All Menu') : ((window._catT&&window._catT[cat])||cat);
 }
 
 function renderMenu() {
@@ -982,9 +990,9 @@ function renderMenu() {
       ? `<img src="${item.image_path}" alt="${item.name}" loading="lazy">`
       : `<span class="card-emoji">${item.emoji || '🍽️'}</span>`;
     const stockBadge = sold
-      ? `<span class="stock-badge stock-out">Sold Out</span>`
-      : low ? `<span class="stock-badge stock-low">Only ${stock} left</span>`
-      : `<span class="stock-badge stock-ok">${stock} avail</span>`;
+      ? `<span class="stock-badge stock-out">${currentLang==="mm"?"လက်ကျန်မရှိပါ":"Sold Out"}</span>`
+      : low ? `<span class="stock-badge stock-low">${currentLang==="mm"?stock+" ကျန်":"Only "+stock+" left"}</span>`
+      : `<span class="stock-badge stock-ok">${currentLang==="mm"?stock+" ခု ရှိ":stock+" avail"}</span>`;
     return `<div class="card">
       <div class="card-img">${imgEl}</div>
       <div class="card-body">
@@ -993,7 +1001,7 @@ function renderMenu() {
         <div class="card-footer">
           <span class="card-price">${fmt(item.price)}</span>
           <button class="add-btn" onclick="addToCart(${item.id})"${sold?' disabled':''}>
-            ${sold ? 'Sold Out' : '+ Add'}
+            ${sold?(currentLang==="mm"?"လက်ကျန်မရှိပါ":"Sold Out"):(currentLang==="mm"?"+ ထည့်":"+ Add")}
           </button>
         </div>
         ${stockBadge}
@@ -1476,6 +1484,7 @@ async function submitOrder() {
 
     orderId  = data.db_id;
     orderRef = data.order_id;
+    window._dbOrderId = data.db_id || data.order_id;
 
     // Loyalty stamp
     const _loyPhoneVal = window._savedPhone || document.getElementById('f-phone')?.value?.trim() || '';
@@ -1772,7 +1781,7 @@ function toast(msg) {
 }
 
 /* ── MM/EN Language Toggle ── */
-let currentLang = 'en';
+let currentLang = 'mm';
 const I18N = {
   en: {
     'အမည် *':             'Full Name *',
@@ -1811,8 +1820,13 @@ function toggleLang() {
   applyLang();
 }
 function applyLang() {
+  var catMM={'All':'အကုန်လုံး','Starters':'ဆိုင်ဖွင့်မုန့်','Drinks':'အဖျော်ယမကာ','Desserts':'နှစ်သက်ဖွယ်','Noodles':'ခေါက်ဆွဲ','Rice':'ထမင်းတွဲ','Soups':'ဟင်းရည်','Snacks':'သရေစာ','Beverages':'အဖျော်','Coffee':'ကော်ဖီ','Tea':'လက်ဖက်ရည်'};
+  var catEN={'အကုန်လုံး':'All','ဆိုင်ဖွင့်မုန့်':'Starters','အဖျော်ယမကာ':'Drinks','နှစ်သက်ဖွယ်':'Desserts','ခေါက်ဆွဲ':'Noodles','ထမင်းတွဲ':'Rice','ဟင်းရည်':'Soups','သရေစာ':'Snacks','အဖျော်':'Beverages','ကော်ဖီ':'Coffee','လက်ဖက်ရည်':'Tea'};
+  window._catT = currentLang === 'mm' ? catMM : catEN;
+  if(typeof renderCats==='function') renderCats();
+  if(typeof renderMenu==='function') renderMenu();
   const btn = document.getElementById('lang-toggle');
-  if (btn) btn.textContent = currentLang === 'en' ? 'မြန်မာ' : 'EN';
+  if (btn) btn.textContent = currentLang === 'mm' ? 'မြန်မာ' : 'EN';
   const map = currentLang === 'mm' ? I18N.mm : I18N.en;
   document.querySelectorAll('[data-en][data-mm]').forEach(el => {
     el.textContent = currentLang === 'mm' ? el.getAttribute('data-mm') : el.getAttribute('data-en');
@@ -1863,7 +1877,7 @@ document.addEventListener('change', e => {
 
 function printCustomerReceipt() {
   if (!orderRef) { alert('Order ID မရသေး'); return; }
-  const w = window.open('receipt.php?id=' + orderRef, '_blank', 'width=420,height=650');
+  const w = window.open('receipt.php?id=' + (window._dbOrderId || orderRef), '_blank', 'width=420,height=650');
   if (!w) alert('Popup blocked — please allow popups');
 }
 
@@ -2001,12 +2015,45 @@ async function addLoyaltyStamp(phone, order_id) {
     }
   } catch(e) {}
 }
+// ══ INLINE HISTORY ══
+function _esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function toggleInlineHist(){
+  const el = document.getElementById('inline-hist');
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    const ph = document.getElementById('f-phone')?.value?.trim() || '';
+    if (ph) { document.getElementById('ih-phone').value = ph; loadInlineHist(); }
+  }
+}
+async function loadInlineHist(){
+  const phone = document.getElementById('ih-phone').value.trim();
+  const res = document.getElementById('ih-result');
+  if (!phone) { res.innerHTML='<div style="color:#aaa;text-align:center;padding:.5rem">Phone ထည့်ပါ</div>'; return; }
+  res.innerHTML='<div style="text-align:center;padding:.5rem;color:#aaa">Loading...</div>';
+  try {
+    const d = await (await fetch('crm_api.php?action=profile&phone='+encodeURIComponent(phone))).json();
+    if (!d.ok || !d.recent_orders?.length) { res.innerHTML='<div style="color:#aaa;text-align:center;padding:.5rem">Order မရှိသေး</div>'; return; }
+    res.innerHTML = d.recent_orders.map(o=>`
+      <div style="border:1px solid #eee;border-radius:8px;padding:.6rem .8rem;margin-bottom:.5rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+          <span style="font-weight:700;color:#e84c2b">NH-${String(o.id).padStart(6,'0')}</span>
+          <span style="font-size:.78rem;color:#aaa">${(o.created_at||'').slice(0,10)}</span>
+        </div>
+        <div style="color:#666;font-size:.8rem;margin-bottom:.2rem">${_esc(o.items_summary||'')}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600">${Number(o.total_amount).toLocaleString()} MMK</span>
+          <span style="font-size:.75rem;background:#f5f5f5;padding:.1rem .5rem;border-radius:10px">${_esc(o.payment_method||'')}</span>
+        </div>
+      </div>`).join('');
+  } catch(e){ res.innerHTML='<div style="color:#e74c3c;text-align:center">Error: '+e.message+'</div>'; }
+}
 // ══ END LOYALTY ══
 </script>
 
 
 <!-- ═══ CUSTOMER HISTORY MODAL ═══ -->
-<div id="cust-hist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;align-items:center;justify-content:center">
+<div id="cust-hist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10010;align-items:center;justify-content:center">
   <div style="background:var(--bg);border-radius:18px;padding:1.5rem;max-width:380px;width:93%;max-height:85vh;overflow-y:auto;position:relative">
     <button onclick="document.getElementById('cust-hist-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted)">✕</button>
     <div style="font-weight:600;font-size:1rem;margin-bottom:1rem">📋 Order History</div>
@@ -2021,7 +2068,7 @@ async function addLoyaltyStamp(phone, order_id) {
 <!-- ═══ LOYALTY STAMP CARD MODAL ═══ -->
 <div id="loyalty-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--bg);border-radius:18px;padding:1.5rem;max-width:340px;width:90%;margin:auto;position:relative">
-    <button onclick="closeLoyalty()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted)">✕</button>
+    <button onclick="closeLoyalty()" style="position:absolute;top:.8rem;right:.8rem;background:#e74c3c;border:none;font-size:1rem;cursor:pointer;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>
     <div style="text-align:center;margin-bottom:1rem">
       <div style="font-size:2rem">🎟</div>
       <div style="font-weight:700;font-size:1.1rem;margin:.3rem 0">Loyalty Stamp Card</div>

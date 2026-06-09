@@ -154,8 +154,33 @@ if (isset($_GET['api'])) { // GET+POST both handled
     /* restock only */
     if ($_GET['api'] === 'restock') {
         $b  = json_decode(file_get_contents('php://input'), true);
-        $s  = db()->prepare("UPDATE menu_items SET stock_qty = stock_qty + :qty WHERE id = :id");
-        $s->execute([':qty'=>(int)$b['qty'], ':id'=>(int)$b['id']]);
+        $item_id = (int)$b['id'];
+        $qty_add = (int)$b['qty'];
+        // get current qty and name before update
+        $cur = db()->prepare("SELECT name, stock_qty, unit FROM menu_items WHERE id=:id");
+        $cur->execute([':id'=>$item_id]);
+        $row = $cur->fetch(PDO::FETCH_ASSOC);
+        $qty_before = (float)($row['stock_qty'] ?? 0);
+        $qty_after  = $qty_before + $qty_add;
+        // update stock
+        $s = db()->prepare("UPDATE menu_items SET stock_qty = stock_qty + :qty WHERE id = :id");
+        $s->execute([':qty'=>$qty_add, ':id'=>$item_id]);
+        // write log
+        require_once __DIR__.'/stock_log_helper.php';
+        write_stock_log(
+            db(),
+            $item_id,
+            $row['name'] ?? 'Unknown',
+            $qty_add >= 0 ? 'add' : 'remove',
+            $qty_before,
+            $qty_after,
+            $row['unit'] ?? '',
+            $b['reason'] ?? 'Restock',
+            (int)($_SESSION['user_id'] ?? 0),
+            $_SESSION['user_name'] ?? 'Admin',
+            (int)($_SESSION['branch_id'] ?? 1),
+            $_SESSION['branch_name'] ?? ''
+        );
         echo json_encode(['ok'=>true]);
         exit;
     }
@@ -1062,6 +1087,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('stock')" id="nav-stock">
         <span class="nav-icon">📦</span> Stock
       </div>
+      <div class="nav-item" onclick="showPage('stocklog')" id="nav-stocklog">
+        <span class="nav-icon">📋</span> Stock Log
+      </div>
       <div class="nav-item" onclick="showPage('crm')" id="nav-crm">
         <span class="nav-icon">👥</span> CRM
       </div>
@@ -1546,6 +1574,28 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- STOCK LOG PAGE -->
+    <div id="page-stocklog" style="display:none">
+      <div class="page-head"><h1 class="page-title">📋 Stock Log</h1></div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end">
+          <div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">ရှာဖွေ</label><input id="sl-search" type="text" placeholder="Item, reason, staff..." oninput="loadStockLogs()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text)"></div>
+          <div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Action</label><select id="sl-action" onchange="loadStockLogs()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text)"><option value="">All</option><option value="add">ထည့်သွင်း</option><option value="remove">ထုတ်ယူ</option><option value="adjust">ပြင်ဆင်</option><option value="waste">ဖျက်ဆီး</option><option value="order_deduct">Order နုတ်</option></select></div>
+          <div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">မှ ရက်</label><input id="sl-date-from" type="date" onchange="loadStockLogs()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text)"></div>
+          <div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">ထိ ရက်</label><input id="sl-date-to" type="date" onchange="loadStockLogs()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text)"></div>
+          <div style="display:flex;gap:8px"><button onclick="loadStockLogs()" style="flex:1;padding:7px;border:none;border-radius:6px;background:#3b82f6;color:#fff;font-size:13px;cursor:pointer">🔍 Search</button><button onclick="exportSL()" style="flex:1;padding:7px;border:none;border-radius:6px;background:#16a34a;color:#fff;font-size:13px;cursor:pointer">⬇ CSV</button></div>
+        </div>
+      </div>
+      <div id="sl-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px"></div>
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)"><th style="padding:10px 12px;text-align:left">#</th><th style="padding:10px 12px;text-align:left">Item</th><th style="padding:10px 12px;text-align:center">Action</th><th style="padding:10px 12px;text-align:center">အဟောင်း</th><th style="padding:10px 12px;text-align:center">အသစ်</th><th style="padding:10px 12px;text-align:center">ပြောင်းလဲ</th><th style="padding:10px 12px;text-align:left">အကြောင်း</th><th style="padding:10px 12px;text-align:left">ဝန်ထမ်း</th><th style="padding:10px 12px;text-align:left">ရက်/အချိန်</th></tr></thead>
+          <tbody id="sl-tbody"><tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px"><span id="sl-count" style="font-size:13px;color:var(--text-muted)"></span><div style="display:flex;gap:8px"><button id="sl-prev" onclick="slPage(-1)" style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;background:var(--surface);color:var(--text)">← Prev</button><button id="sl-next" onclick="slPage(1)" style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;background:var(--surface);color:var(--text)">Next →</button></div></div>
     </div>
 
     <!-- Stock Adjust Modal -->
@@ -2960,7 +3010,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -2968,6 +3018,7 @@ function showPage(page) {
     if (mb) mb.classList.toggle('active', p===page);
   });
   if (page==='dashboard') { loadStats(); loadOrders(); loadAnalytics(7); }
+  if (page==='stocklog')  { loadStockLogs(); }
   if (page==='menu')      { loadMenuItems(); }
   if (page==='orders')    { loadOrders(); }
   if (page==='settings')  { loadSettings(); }
@@ -4712,5 +4763,50 @@ function collectTownshipPromo(){
 }
 </script>
 <script src="admin_modules.js"></script>
+<script>
+(function(){
+var slOff=0,slTotal=0,SL_LIMIT=50;
+var AC={add:{bg:"#dcfce7",c:"#166534",l:"ထည့်သွင်း"},remove:{bg:"#fee2e2",c:"#991b1b",l:"ထုတ်ယူ"},adjust:{bg:"#dbeafe",c:"#1e40af",l:"ပြင်ဆင်"},waste:{bg:"#fef9c3",c:"#854d0e",l:"ဖျက်ဆီး"},order_deduct:{bg:"#f3e8ff",c:"#6b21a8",l:"Order နုတ်"},initial:{bg:"#f0f9ff",c:"#0c4a6e",l:"စတင်"}};
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+window.loadStockLogs=function(r){
+  if(r!==false)slOff=0;
+  var today=new Date(),fd=new Date(today.getFullYear(),today.getMonth(),1);
+  document.getElementById("sl-date-from").value=fd.toISOString().split("T")[0];
+  document.getElementById("sl-date-to").value=today.toISOString().split("T")[0];
+  var p=new URLSearchParams({action:"list",limit:SL_LIMIT,offset:slOff,search:document.getElementById("sl-search").value,action_type:document.getElementById("sl-action").value,date_from:document.getElementById("sl-date-from").value,date_to:document.getElementById("sl-date-to").value});
+  document.getElementById("sl-tbody").innerHTML="<tr><td colspan=9 style=text-align:center;padding:30px;color:#aaa>Loading...</td></tr>";
+  fetch("stock_log_api.php?"+p).then(function(r){return r.json();}).then(function(d){
+    slTotal=d.total||0;
+    var rows=d.logs||[];
+    if(!rows.length){document.getElementById("sl-tbody").innerHTML="<tr><td colspan=9 style=text-align:center;padding:30px;color:#aaa>မှတ်တမ်း မရှိသေး</td></tr>";}
+    else{document.getElementById("sl-tbody").innerHTML=rows.map(function(r,i){
+      var chg=parseFloat(r.change_qty),cc=chg>0?"#16a34a":chg<0?"#dc2626":"#888",cs=chg>0?"+":"";
+      var rL={restock:"📥 Restock",manual_adjust:"✏️ Adjust",order_deduct:"🛒 Order",waste:"🗑 Waste",correction:"🔧 Fix",returned:"↩ Return"};
+      var rBg=chg>0?"#dcfce7":chg<0?"#fee2e2":"#f3f4f6",rC=chg>0?"#166534":chg<0?"#991b1b":"#555";
+      return "<tr style=border-bottom:1px solid #eee;"+(i%2?"background:#fafafa":"")+">"
+        +"<td style=padding:8px 12px;color:#aaa>"+r.id+"</td>"
+        +"<td style=padding:8px 12px;font-weight:500>"+esc(r.item_name)+"</td>"
+        +"<td style=padding:8px 12px;text-align:center><span style=background:"+rBg+";color:"+rC+";padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600>"+(rL[r.reason]||r.reason||"—")+"</span></td>"
+        +"<td style=padding:8px 12px;text-align:center;color:#888>—</td>"
+        +"<td style=padding:8px 12px;text-align:center;font-weight:600>"+r.new_qty+"</td>"
+        +"<td style=padding:8px 12px;text-align:center;font-weight:600;color:"+cc+">"+cs+chg+"</td>"
+        +"<td style=padding:8px 12px;color:#666;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap>"+esc(r.note||"—")+"</td>"
+        +"<td style=padding:8px 12px;color:#555>"+esc(r.staff_name||"—")+"</td>"
+        +"<td style=padding:8px 12px;color:#888;font-size:12px;white-space:nowrap>"+r.created_fmt+"</td></tr>";
+    }).join("");}
+    document.getElementById("sl-count").textContent=(slOff+1)+"–"+Math.min(slOff+SL_LIMIT,slTotal)+" / "+slTotal+" records";
+    document.getElementById("sl-prev").disabled=slOff===0;
+    document.getElementById("sl-next").disabled=slOff+SL_LIMIT>=slTotal;
+  }).catch(function(){document.getElementById("sl-tbody").innerHTML="<tr><td colspan=9 style=text-align:center;padding:30px;color:red>API error</td></tr>";});
+  fetch("stock_log_api.php?action=summary&date_from="+document.getElementById("sl-date-from").value+"&date_to="+document.getElementById("sl-date-to").value).then(function(r){return r.json();}).then(function(d){
+    var el=document.getElementById("sl-summary");
+    if(!d.summary||!d.summary.length){el.innerHTML="";return;}
+    el.innerHTML=d.summary.map(function(s){var st=AC[s.action]||{bg:"#f5f5f5",c:"#333",l:s.action};return "<div style=background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center><div style=font-size:10px;font-weight:600;color:"+st.c+";background:"+st.bg+";padding:2px 8px;border-radius:10px;display:inline-block;margin-bottom:6px>"+st.l+"</div><div style=font-size:22px;font-weight:700>"+s.total_entries+"</div><div style=font-size:11px;color:#888>entries</div></div>";}).join("");
+  });
+};
+window.slPage=function(d){slOff=Math.max(0,slOff+d*SL_LIMIT);loadStockLogs(false);};
+window.exportSL=function(){window.open("stock_log_api.php?action=export_csv&date_from="+document.getElementById("sl-date-from").value+"&date_to="+document.getElementById("sl-date-to").value,"_blank");};
+})();
+</script>
 </body>
 </html>

@@ -73,7 +73,7 @@ $total         = (int)$body['total'];
 $deviceId      = sanitizeStr($body['device_id'] ?? '');
 $orderType     = in_array(($body['order_type']??''), ['delivery','dine_in']) ? $body['order_type'] : 'delivery';
 $tableId       = strtoupper(sanitizeStr($body['table_id'] ?? ''));
-if ($orderType === 'dine_in' && !$tableId) $orderType = 'delivery';
+if ($orderType === 'dine_in' && !$tableId && strpos($deviceId,'kiosk')===false) $orderType = 'delivery';
 
 $requiredFields = $orderType === 'dine_in' ? ['name'] : ['name','phone','address'];
 foreach ($requiredFields as $f) {

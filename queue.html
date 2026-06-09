@@ -211,7 +211,7 @@ function renderServed(items) {
 }
 
 function updateClock(time) {
-  document.getElementById('q-clock').textContent = time || new Date().toTimeString().slice(0,5);
+  var _n=new Date();document.getElementById('q-clock').textContent=('0'+(_n.getHours()%12||12)).slice(-2)+':'+('0'+_n.getMinutes()).slice(-2)+':'+('0'+_n.getSeconds()).slice(-2)+' '+(_n.getHours()>=12?'PM':'AM');
 }
 
 async function poll() {
@@ -223,7 +223,7 @@ async function poll() {
     renderReady(d.ready);
     renderPreparing(d.preparing);
     renderServed(d.served);
-    updateClock(d.time);
+    updateClock();
 
     // Update branding
     if (d.name) document.getElementById('q-logo').textContent = '🍜 ' + d.name;
@@ -271,7 +271,7 @@ async function pollWithSound() {
     renderReady(d.ready);
     renderPreparing(d.preparing);
     renderServed(d.served);
-    updateClock(d.time);
+    updateClock();
     if (d.name) document.getElementById('q-logo').textContent = '🍜 ' + d.name;
   } catch(e) {}
 }
