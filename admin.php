@@ -1105,6 +1105,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('saas')" id="nav-saas">
         <span class="nav-icon">🌐</span> SaaS
       </div>
+      <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
+        <span class="nav-icon">👥</span> Staff
+      </div>
       <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
         <span class="nav-icon">⚙️</span> Settings
       </div>
@@ -1596,6 +1599,54 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         </table>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px"><span id="sl-count" style="font-size:13px;color:var(--text-muted)"></span><div style="display:flex;gap:8px"><button id="sl-prev" onclick="slPage(-1)" style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;background:var(--surface);color:var(--text)">← Prev</button><button id="sl-next" onclick="slPage(1)" style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;background:var(--surface);color:var(--text)">Next →</button></div></div>
+    </div>
+
+
+    <!-- STAFF PAGE -->
+    <div id="page-staff" style="display:none">
+      <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <h1 class="page-title">👥 Staff Management</h1>
+        <button onclick="staffOpenAdd()" style="padding:.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.88rem;cursor:pointer;font-weight:600">+ Add Staff</button>
+      </div>
+      <div id="staff-list" style="display:grid;gap:10px;margin-top:1rem"></div>
+    </div>
+
+    <!-- STAFF MODAL -->
+    <div id="staff-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9100;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:16px;padding:1.5rem;max-width:460px;width:93%;max-height:88vh;overflow-y:auto;position:relative">
+        <button onclick="document.getElementById('staff-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:#e74c3c;color:#fff;border:none;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">✕</button>
+        <div id="staff-modal-title" style="font-size:1.1rem;font-weight:700;margin-bottom:1.2rem">Add Staff</div>
+        <input type="hidden" id="sf-id">
+        <div style="display:grid;gap:.85rem">
+          <div>
+            <label style="font-size:.8rem;color:var(--text-muted);display:block;margin-bottom:.3rem">Name *</label>
+            <input id="sf-name" type="text" placeholder="Ko Aung" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.9rem">
+          </div>
+          <div>
+            <label style="font-size:.8rem;color:var(--text-muted);display:block;margin-bottom:.3rem">PIN * (4-6 digits)</label>
+            <input id="sf-pin" type="password" placeholder="••••" maxlength="6" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.9rem;letter-spacing:.2em">
+          </div>
+          <div>
+            <label style="font-size:.8rem;color:var(--text-muted);display:block;margin-bottom:.3rem">Role</label>
+            <select id="sf-role" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.9rem">
+              <option value="waiter">🧑‍🍳 Waiter</option>
+              <option value="manager">👔 Manager</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.8rem;color:var(--text-muted);display:block;margin-bottom:.5rem">Permissions — ဘယ် page သုံးခွင့်ပေးမလဲ</label>
+            <div id="sf-perms" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
+          </div>
+          <div>
+            <label style="font-size:.8rem;color:var(--text-muted);display:block;margin-bottom:.3rem">Notes</label>
+            <input id="sf-notes" type="text" placeholder="Optional notes" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.9rem">
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem;margin-top:1.2rem">
+          <button onclick="staffSave()" style="flex:1;padding:.7rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer">Save</button>
+          <button onclick="document.getElementById('staff-modal').style.display='none'" style="padding:.7rem 1.2rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:.9rem;cursor:pointer;color:var(--text)">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <!-- Stock Adjust Modal -->
@@ -3010,7 +3061,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog','staff'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -3019,6 +3070,7 @@ function showPage(page) {
   });
   if (page==='dashboard') { loadStats(); loadOrders(); loadAnalytics(7); }
   if (page==='stocklog')  { loadStockLogs(); }
+  if (page==='staff')      { loadStaff(); }
   if (page==='menu')      { loadMenuItems(); }
   if (page==='orders')    { loadOrders(); }
   if (page==='settings')  { loadSettings(); }
@@ -4279,7 +4331,7 @@ function printAllQR() {
       const qr   = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
       return `<div class="page"><img src="${qr}"><h2>${code}</h2><p>${url}</p></div>`;
     }).join('')}
-    </body></html>`);
+</body></html>`);
   win.document.close();
 }
 
@@ -4807,6 +4859,100 @@ window.loadStockLogs=function(r){
 window.slPage=function(d){slOff=Math.max(0,slOff+d*SL_LIMIT);loadStockLogs(false);};
 window.exportSL=function(){window.open("stock_log_api.php?action=export_csv&date_from="+document.getElementById("sl-date-from").value+"&date_to="+document.getElementById("sl-date-to").value,"_blank");};
 })();
+</script>
+
+<script>
+/* ══ STAFF MANAGEMENT ══ */
+const ALL_PAGES = [
+  {k:'dashboard',l:'📊 Dashboard'},{k:'orders',l:'📋 Orders'},
+  {k:'menu',l:'🍜 Menu'},{k:'tables',l:'🍽️ Tables'},
+  {k:'stock',l:'📦 Stock'},{k:'stocklog',l:'📋 Stock Log'},
+  {k:'crm',l:'👥 CRM'},{k:'shift',l:'🕐 Shifts'},
+  {k:'reserve',l:'📅 Reservations'},{k:'delivery',l:'🛵 Delivery'},
+  {k:'branches',l:'🏢 Branches'},{k:'analytics',l:'📈 Analytics'},
+  {k:'settings',l:'⚙️ Settings'}
+];
+async function loadStaff(){
+  const el=document.getElementById('staff-list');
+  el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</div>';
+  try{
+    const d=await(await fetch('staff_api.php?action=list')).json();
+    if(!d.ok)throw new Error(d.msg);
+    if(!d.staff.length){el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted)">No staff yet</div>';return;}
+    el.innerHTML=d.staff.map(s=>{
+      const perms=(s.permissions||[]).map(p=>{const pg=ALL_PAGES.find(x=>x.k===p);return pg?`<span style="font-size:.72rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.15rem .5rem">${pg.l}</span>`:''}).join(' ');
+      const roleBadge=s.role==='manager'?'<span style="background:#dbeafe;color:#1e40af;padding:.2rem .6rem;border-radius:10px;font-size:.75rem;font-weight:600">👔 Manager</span>':'<span style="background:#f3f4f6;color:#555;padding:.2rem .6rem;border-radius:10px;font-size:.75rem;font-weight:600">🧑‍🍳 Waiter</span>';
+      const activeBadge=s.is_active?'<span style="color:#27ae60;font-size:.75rem">● Active</span>':'<span style="color:#e74c3c;font-size:.75rem">● Inactive</span>';
+      const sData=encodeURIComponent(JSON.stringify(s));
+      return `<div class="card" style="padding:1rem 1.2rem;${!s.is_active?'opacity:.55':''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem">
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div style="width:40px;height:40px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.2rem">${s.role==='manager'?'👔':'🧑‍🍳'}</div>
+            <div><div style="font-weight:700">${escHtml(s.name)}</div><div style="font-size:.78rem;color:var(--text-muted);margin-top:.1rem">${roleBadge} ${activeBadge}</div></div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button onclick="staffOpenEdit('${sData}')" style="padding:.4rem .8rem;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-size:.8rem;cursor:pointer;color:var(--text)">✏️ Edit</button>
+            <button onclick="staffToggle(${s.id},${s.is_active})" style="padding:.4rem .8rem;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-size:.8rem;cursor:pointer;color:${s.is_active?'#e74c3c':'#27ae60'}">${s.is_active?'🚫 Disable':'✅ Enable'}</button>
+            <button onclick="staffDelete(${s.id},'${escHtml(s.name)}')" style="padding:.4rem .8rem;background:#fee2e2;border:1px solid #fca5a5;border-radius:7px;font-size:.8rem;cursor:pointer;color:#991b1b">🗑</button>
+          </div>
+        </div>
+        ${perms?`<div style="display:flex;flex-wrap:wrap;gap:.3rem">${perms}</div>`:'<div style="font-size:.75rem;color:var(--text-muted)">No permissions set</div>'}
+        ${s.notes?`<div style="font-size:.78rem;color:var(--text-muted);margin-top:.4rem">📝 ${escHtml(s.notes)}</div>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:#e74c3c;padding:2rem;text-align:center">${e.message}</div>`;}
+}
+function staffRenderPerms(selected=[]){
+  document.getElementById('sf-perms').innerHTML=ALL_PAGES.map(p=>
+    `<label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;cursor:pointer;padding:.3rem .5rem;border:1px solid var(--border);border-radius:7px;background:${selected.includes(p.k)?'rgba(232,160,48,.1)':'var(--surface2)'}">
+      <input type="checkbox" value="${p.k}" ${selected.includes(p.k)?'checked':''} style="accent-color:var(--accent)">${p.l}
+    </label>`
+  ).join('');
+}
+function staffOpenAdd(){
+  document.getElementById('sf-id').value='';
+  document.getElementById('sf-name').value='';
+  document.getElementById('sf-pin').value='';
+  document.getElementById('sf-role').value='waiter';
+  document.getElementById('sf-notes').value='';
+  document.getElementById('staff-modal-title').textContent='+ Add Staff';
+  staffRenderPerms(['orders','tables']);
+  document.getElementById('staff-modal').style.display='flex';
+}
+function staffOpenEdit(encoded){
+  const s=JSON.parse(decodeURIComponent(encoded));
+  document.getElementById('sf-id').value=s.id;
+  document.getElementById('sf-name').value=s.name;
+  document.getElementById('sf-pin').value='';
+  document.getElementById('sf-role').value=s.role;
+  document.getElementById('sf-notes').value=s.notes||'';
+  document.getElementById('staff-modal-title').textContent='✏️ Edit — '+s.name;
+  staffRenderPerms(s.permissions||[]);
+  document.getElementById('staff-modal').style.display='flex';
+}
+async function staffSave(){
+  const id=document.getElementById('sf-id').value;
+  const perms=Array.from(document.querySelectorAll('#sf-perms input:checked')).map(i=>i.value);
+  const payload={name:document.getElementById('sf-name').value.trim(),pin:document.getElementById('sf-pin').value.trim(),role:document.getElementById('sf-role').value,permissions:perms,notes:document.getElementById('sf-notes').value.trim()};
+  if(id)payload.id=parseInt(id);
+  const action=id?'update':'add';
+  try{
+    const d=await(await fetch('staff_api.php?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})).json();
+    if(!d.ok){alert('Error: '+d.msg);return;}
+    document.getElementById('staff-modal').style.display='none';
+    loadStaff();
+  }catch(e){alert('Error: '+e.message);}
+}
+async function staffToggle(id,current){
+  const d=await(await fetch('staff_api.php?action=update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,is_active:current?0:1})})).json();
+  if(d.ok)loadStaff(); else alert(d.msg);
+}
+async function staffDelete(id,name){
+  if(!confirm(name+' ကို ဖျက်မည် — သေချာပါသလား?'))return;
+  const d=await(await fetch('staff_api.php?action=delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();
+  if(d.ok)loadStaff(); else alert(d.msg);
+}
+/* ══ END STAFF ══ */
 </script>
 </body>
 </html>

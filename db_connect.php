@@ -49,5 +49,3 @@ function getPDO(): PDO {
     return $pdo;
 }
 
-// Alias for legacy code
-function db(): PDO { return getPDO(); }
