@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/tenant_helper.php';
 $pdo = getPDO();
 
 
@@ -69,7 +70,7 @@ $ACTIVE_SQL = "
     FROM kds_queue   kq
     JOIN orders      o  ON o.id = kq.order_id
     JOIN order_items oi ON oi.order_id = o.id
-    WHERE kq.status IN ('pending','preparing','ready')
+    WHERE kq.status IN ('pending','preparing','ready') AND kq.tenant_id = ' . tenantId() . '
     {$stationFilter}
     GROUP BY kq.id
     ORDER BY kq.pushed_at ASC
@@ -93,7 +94,7 @@ $NEW_SQL = "
     FROM kds_queue   kq
     JOIN orders      o  ON o.id = kq.order_id
     JOIN order_items oi ON oi.order_id = o.id
-    WHERE kq.id > :last_id
+    WHERE kq.id > :last_id AND kq.tenant_id = :tid
     {$stationFilter}
     GROUP BY kq.id
     ORDER BY kq.id ASC
@@ -117,7 +118,7 @@ sseOut('meta', ['station' => $stationParam]);
 sseOut('init', array_values(buildOrderBatch($pdo, $active, $MOD_SQL)));
 
 /* ── Step 2: lastId baseline ────────────────────────────────────────────── */
-$lastId = (int)$pdo->query("SELECT COALESCE(MAX(id),0) FROM kds_queue")->fetchColumn();
+$lastId = (int)$pdo->query("SELECT COALESCE(MAX(id),0) FROM kds_queue WHERE tenant_id=' . tenantId() . '")->fetchColumn();
 
 /* ── Step 3: polling loop ───────────────────────────────────────────────── */
 $newStmt = $pdo->prepare($NEW_SQL);

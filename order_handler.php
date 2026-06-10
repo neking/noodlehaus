@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST')    { jsonError('Method not allowed', 405); }
 
 require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/tenant_helper.php';
 $pdo = getPDO();
 
 // ── Customer Cancel (within 2 min) ──
@@ -111,15 +112,16 @@ try {
     if (!$isAppend) {
         $s = $pdo->prepare("
             INSERT INTO orders
-                (customer_name,customer_phone,delivery_address,township,city,
+                (tenant_id,customer_name,customer_phone,delivery_address,township,city,
                  special_notes,payment_method,subtotal,delivery_fee,total_amount,
                  status,device_id,order_type,table_id,table_status,created_at)
             VALUES
-                (:name,:phone,:address,:township,:city,
+                (:tenant_id,:name,:phone,:address,:township,:city,
                  :notes,:payment,:subtotal,:delivery_fee,:total,
                  'pending',:device_id,:order_type,:table_id,:table_status,NOW())
         ");
         $s->execute([
+            ':tenant_id'    => tenantId(),
             ':name'         => sanitizeStr($customer['name']),
             ':phone'        => sanitizeStr($customer['phone']    ?? ''),
             ':address'      => sanitizeStr($customer['address']  ?? ''),

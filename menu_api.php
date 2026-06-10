@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/tenant_helper.php';
 $pdo = getPDO();
 
 
@@ -37,12 +38,15 @@ header('Cache-Control: no-cache');
 
 /* ── Menu items ── */
 try {
-    $rows = $pdo->query("
+    $tid = tenantId();
+    $stmt = $pdo->prepare("
         SELECT id, name, category, description, price, stock_qty, emoji, image_path
         FROM menu_items
-        WHERE is_active = 1
+        WHERE is_active = 1 AND tenant_id = :tid
         ORDER BY sort_order ASC, category, name
-    ")->fetchAll();
+    ");
+    $stmt->execute([':tid' => $tid]);
+    $rows = $stmt->fetchAll();
 } catch (PDOException $e) {
     echo json_encode([
         'ok'      => false,
