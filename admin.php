@@ -1110,7 +1110,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     </div>
     <?php if (!empty($_SESSION['demo_mode'])): ?>
     <div style="background:#f39c12;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:600;letter-spacing:.05em">
-      🔒 READ ONLY DEMO — ကြည့်ရုံပဲ · Data မပြောင်းရ
+      🔒 READ ONLY DEMO MODE
     </div>
     <?php endif; ?>
     <nav>
