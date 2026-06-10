@@ -196,7 +196,17 @@ if (isset($_GET['api'])) { // GET+POST both handled
     /* delete */
     if ($_GET['api'] === 'delete') {
         $b = json_decode(file_get_contents('php://input'), true);
-        db()->prepare("DELETE FROM menu_items WHERE id=:id")->execute([':id'=>(int)$b['id']]);
+        // Soft delete — FK constraint ကြောင့် hard delete မဖြစ်
+        $check = db()->prepare("SELECT COUNT(*) FROM order_items WHERE menu_item_id=:id");
+        $check->execute([':id'=>(int)$b['id']]);
+        if ((int)$check->fetchColumn() > 0) {
+            // Has order history — deactivate only
+            db()->prepare("UPDATE menu_items SET is_active=0 WHERE id=:id")->execute([':id'=>(int)$b['id']]);
+        } else {
+            // No orders — safe to hard delete
+            db()->prepare("DELETE FROM modifier_groups WHERE menu_item_id=:id")->execute([':id'=>(int)$b['id']]);
+            db()->prepare("DELETE FROM menu_items WHERE id=:id")->execute([':id'=>(int)$b['id']]);
+        }
         echo json_encode(['ok'=>true]);
         exit;
     }
