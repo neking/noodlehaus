@@ -8,6 +8,9 @@
 function getCurrentTenantId(): int {
     if (session_status() === PHP_SESSION_NONE) session_start();
     
+    // GET param always wins (public ordering page with ?tenant_id=X)
+    if (!empty($_GET['tenant_id'])) return (int)$_GET['tenant_id'];
+    
     // Platform admin (super) sees all → tenant 0 = no filter
     if (!empty($_SESSION['super_admin'])) return 0;
     
@@ -17,8 +20,8 @@ function getCurrentTenantId(): int {
     // Regular admin session → default tenant 1 (NoodleHaus Main)
     if (!empty($_SESSION['admin'])) return 1;
     
-    // Public requests (ordering page) → read from GET/POST or header
-    $tid = (int)($_GET['tenant_id'] ?? $_POST['tenant_id'] ?? $_SERVER['HTTP_X_TENANT_ID'] ?? 1);
+    // Public requests → POST or header
+    $tid = (int)($_POST['tenant_id'] ?? $_SERVER['HTTP_X_TENANT_ID'] ?? 1);
     return max(1, $tid);
 }
 

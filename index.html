@@ -930,9 +930,31 @@ const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:
 ═══════════════════════════════════════ */
 (async () => {
   loadCart();
+  // ── Tenant detection ──
+  const _slug = new URLSearchParams(location.search).get('t');
+  if (_slug) {
+    try {
+      const _td = await (await fetch('tenant_api.php?action=resolve&slug=' + encodeURIComponent(_slug))).json();
+      if (_td.ok) {
+        window._TENANT_ID = _td.tenant_id;
+        window._TENANT_NAME = _td.name;
+        document.title = _td.name + ' — Online Order';
+      }
+    } catch(e) {}
+  }
   await loadMenu();
+  // If tenant slug was in URL, menu already loaded with correct tenant
+  // renderCats/renderMenu will use the correct menu array
   renderCats();
   renderMenu();
+  // Reload menu for tenant after full init
+  if (new URLSearchParams(location.search).get('t')) {
+    setTimeout(async () => {
+      await loadMenu();
+      renderCats();
+      renderMenu();
+    }, 300);
+  }
   applySettings();
   applyLang();
   renderCartUI();
@@ -953,7 +975,8 @@ const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:
 ═══════════════════════════════════════ */
 async function loadMenu() {
   try {
-    const r = await fetch('menu_api.php');
+    const tid = window._TENANT_ID || 1;
+    const r = await fetch('menu_api.php?tenant_id=' + tid);
     const d = await r.json();
     if (!d.ok) return;
     menu = d.items || [];
@@ -1781,21 +1804,7 @@ function toast(msg) {
 }
 
 /* ── MM/EN Language Toggle ── */
-// ── Tenant detection from URL slug ──
-(async function() {
-  const slug = new URLSearchParams(location.search).get('t');
-  if (slug) {
-    try {
-      const d = await (await fetch('tenant_api.php?action=resolve&slug=' + encodeURIComponent(slug))).json();
-      if (d.ok) {
-        window._TENANT_ID = d.tenant_id;
-        window._TENANT_NAME = d.name;
-        // Update page title
-        document.title = d.name + ' — Online Order';
-      }
-    } catch(e) {}
-  }
-})();
+// Tenant detection moved to init sequence
 let currentLang = 'en';
 const I18N = {
   en: {

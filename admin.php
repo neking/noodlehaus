@@ -1108,6 +1108,11 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <option value="0" style="background:#2a1f14;color:#fff">🏢 All Branches</option>
       </select>
     </div>
+    <?php if (!empty($_SESSION['demo_mode'])): ?>
+    <div style="background:#f39c12;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:600;letter-spacing:.05em">
+      🔒 READ ONLY DEMO — ကြည့်ရုံပဲ · Data မပြောင်းရ
+    </div>
+    <?php endif; ?>
     <nav>
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
         <span class="nav-icon">📊</span> Dashboard
@@ -5081,5 +5086,34 @@ async function staffDelete(id,name){
 }
 /* ══ END STAFF ══ */
 </script>
+
+<?php if (!empty($_SESSION['demo_mode'])): ?>
+<script>
+// READ ONLY MODE - disable all save/delete/add buttons
+document.addEventListener('DOMContentLoaded', function() {
+  // Intercept all fetch POST requests
+  var origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    if (opts && opts.method && opts.method.toUpperCase() === 'POST') {
+      var u = String(url);
+      // Allow login/logout only
+      if (!u.includes('api=login') && !u.includes('api=logout')) {
+        showToast('🔒 Read-only demo — Data မပြောင်းနိုင်ပါ', true);
+        return Promise.resolve(new Response(JSON.stringify({ok:false,msg:'Demo mode - read only'}), {status:200, headers:{'Content-Type':'application/json'}}));
+      }
+    }
+    return origFetch.apply(this, arguments);
+  };
+  // Visual: grey out all save/action buttons
+  setTimeout(function() {
+    document.querySelectorAll('.btn-primary, .btn-danger, [onclick*="save"], [onclick*="delete"], [onclick*="Delete"]').forEach(function(el) {
+      el.style.opacity = '0.4';
+      el.style.cursor = 'not-allowed';
+      el.title = '🔒 Read-only demo';
+    });
+  }, 2000);
+});
+</script>
+<?php endif; ?>
 </body>
 </html>
