@@ -70,6 +70,8 @@ if ($action === 'signup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 /* ── LIST (super admin) ── */
 if ($action === 'list') {
+    if (session_status()===PHP_SESSION_NONE) session_start();
+    if (empty($_SESSION['admin']) && empty($_SESSION['super_admin'])) fail('Unauthorized', 401);
     requireSuperAdmin();
     $rows = $pdo->query("
         SELECT t.*,
@@ -135,6 +137,9 @@ if ($action === 'bill' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 /* ── SAAS STATS ── */
 if ($action === 'stats') {
+    // Allow both super admin and regular admin
+    if (session_status()===PHP_SESSION_NONE) session_start();
+    if (empty($_SESSION['admin']) && empty($_SESSION['super_admin'])) fail('Unauthorized', 401);
     requireSuperAdmin();
     $s = $pdo->query("SELECT
         (SELECT COUNT(*) FROM tenants) AS total_tenants,
@@ -148,3 +153,33 @@ if ($action === 'stats') {
 }
 
 fail('Unknown action');
+
+// ── Manual KBZPay Payment Confirmation ──────────────────────────
+if ($action === 'confirm_payment' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireSuperAdmin();
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $tenantId  = (int)($d['tenant_id'] ?? 0);
+    $planCode  = trim($d['plan'] ?? '');
+    $payRef    = trim($d['payment_ref'] ?? '');
+    $months    = max(1, (int)($d['months'] ?? 1));
+    if (!$tenantId || !$planCode || !$payRef) fail('Missing fields');
+
+    $plan = $pdo->prepare("SELECT * FROM saas_plans WHERE code=?");
+    $plan->execute([$planCode]);
+    $p = $plan->fetch(PDO::FETCH_ASSOC);
+    if (!$p) fail('Invalid plan');
+
+    $amount     = (int)$p['price_mmk'] * $months;
+    $periodStart = date('Y-m-d');
+    $periodEnd   = date('Y-m-d', strtotime("+{$months} months"));
+
+    // Record billing
+    $pdo->prepare("INSERT INTO billing (tenant_id,plan_code,amount,payment_method,payment_ref,status,period_start,period_end) VALUES (?,?,?,'kbzpay',?,?,?,?)")
+        ->execute([$tenantId, $planCode, $amount, $payRef, 'paid', $periodStart, $periodEnd]);
+
+    // Upgrade tenant plan + extend expiry
+    $pdo->prepare("UPDATE tenants SET plan=?, plan_expires=?, max_branches=?, max_staff=?, max_menu_items=? WHERE id=?")
+        ->execute([$planCode, $periodEnd, $p['max_branches'], $p['max_staff'], $p['max_menu_items'], $tenantId]);
+
+    ok(['message'=>"Payment confirmed. Plan upgraded to {$planCode} until {$periodEnd}"]);
+}

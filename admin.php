@@ -3171,7 +3171,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog','staff','promos','expenses','schedule','storefront'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog','staff','promos','expenses','schedule','storefront','saas'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -3200,6 +3200,7 @@ function showPage(page) {
   if (page==='schedule')   { if(typeof schedLoad==='function') schedLoad(); }
   if (page==='expenses')   { expLoad(); }
   if (page==='schedule')   { schedLoad(); }
+  if (page==='saas')       { saasLoad(); }
   if (page==='saas')       { saasLoad(); }
   // Close sidebar on mobile after nav
   closeSidebar();
