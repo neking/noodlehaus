@@ -83,8 +83,8 @@ function hookStockDeduct(PDO $pdo, int $orderId, array $items): void {
             $newQty = (int)$pdo->query("SELECT stock_qty FROM menu_items WHERE id = $itemId")->fetchColumn();
 
             $pdo->prepare("
-                INSERT INTO stock_log (menu_item_id, item_name, change_qty, new_qty, reason, order_id)
-                VALUES (?, ?, ?, ?, 'order_deduct', ?)
+                INSERT INTO stock_log (menu_item_id, item_name, change_qty, new_qty, reason, order_id, staff_name)
+                VALUES (?, ?, ?, ?, 'order_deduct', ?, 'System (Auto)')
             ")->execute([$itemId, $name, -$qty, $newQty, $orderId]);
         }
     } catch (Exception $e) { /* stock fail — order unaffected */ }
