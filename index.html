@@ -1781,6 +1781,21 @@ function toast(msg) {
 }
 
 /* ── MM/EN Language Toggle ── */
+// ── Tenant detection from URL slug ──
+(async function() {
+  const slug = new URLSearchParams(location.search).get('t');
+  if (slug) {
+    try {
+      const d = await (await fetch('tenant_api.php?action=resolve&slug=' + encodeURIComponent(slug))).json();
+      if (d.ok) {
+        window._TENANT_ID = d.tenant_id;
+        window._TENANT_NAME = d.name;
+        // Update page title
+        document.title = d.name + ' — Online Order';
+      }
+    } catch(e) {}
+  }
+})();
 let currentLang = 'en';
 const I18N = {
   en: {

@@ -13,7 +13,7 @@ $csrfToken = generateCsrfToken();
 ── */
 define('ADMIN_USER', 'admin');
 // bcrypt hash of 'noodlehaus2024' — genhash.php သုံးပြီး ပြောင်းနိုင်
-define('ADMIN_PASS_HASH', '$2y$12$xulLdG0ImK/KUDNp54gIOOvkb/rQfkZnhqIDGua.wnBu2I2wINRla');  // ← blank ဆိုရင် auto-set ဖြစ်မည်
+define('ADMIN_PASS_HASH', '$2y$12$DwR3F2j7J6W7kOwP2upfF.jaE7O64EBTjimp8UO4qI2bueDIwDtV2');  // ← blank ဆိုရင် auto-set ဖြစ်မည်
 
 /* ── DB ── */
 
@@ -95,6 +95,16 @@ if (isset($_GET['api'])) { // GET+POST both handled
         // ────────────────────────────────────────────────────
 
         $hash = ADMIN_PASS_HASH ?: password_hash('noodlehaus2024', PASSWORD_BCRYPT);
+        // Demo user (read-only demo access)
+        $demoHash = '$2y$12$m/erGB4KFb4H/x/f6EA/zuri0Ekl8aXe88FF6nk2kpwppTuYI0kFq';
+        if ($inputUser === 'demo' && password_verify($inputPass, $demoHash)) {
+            $_SESSION['admin'] = true;
+            $_SESSION['demo_mode'] = true;
+            $_SESSION['login_time'] = time();
+            @unlink($lockFile);
+            echo json_encode(['ok'=>true,'demo'=>true]);
+            exit;
+        }
         if ($inputUser === ADMIN_USER && password_verify($inputPass, $hash)) {
             $_SESSION['admin'] = true;
             $_SESSION['login_time'] = time();

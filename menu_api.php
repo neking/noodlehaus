@@ -38,7 +38,14 @@ header('Cache-Control: no-cache');
 
 /* ── Menu items ── */
 try {
-    $tid = tenantId();
+    // Support slug-based tenant detection
+if (!empty($_GET['slug'])) {
+    $row = getPDO()->prepare("SELECT id FROM tenants WHERE slug=? AND is_active=1");
+    $row->execute([trim($_GET['slug'])]);
+    $slugTenant = $row->fetchColumn();
+    if ($slugTenant) $_GET['tenant_id'] = $slugTenant;
+}
+$tid = tenantId();
     $stmt = $pdo->prepare("
         SELECT id, name, category, description, price, stock_qty, emoji, image_path
         FROM menu_items
