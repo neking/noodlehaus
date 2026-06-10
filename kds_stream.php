@@ -2,7 +2,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db_connect.php';
-require_once __DIR__ . '/tenant_helper.php';
+// KDS: no session (SSE session locking ဖြစ်မည်) - GET param only
+$tenantId = max(1, (int)($_GET['tenant_id'] ?? 1));
 $pdo = getPDO();
 
 
@@ -17,6 +18,9 @@ while (ob_get_level() > 0) ob_end_clean();
 define('DB_CHARSET', 'utf8mb4');
 
 header('Content-Type: text/event-stream; charset=utf-8');
+header('X-Accel-Buffering: no');
+header('Content-Encoding: none');  // disable gzip for SSE
+ini_set('zlib.output_compression', 'Off');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
@@ -70,7 +74,7 @@ $ACTIVE_SQL = "
     FROM kds_queue   kq
     JOIN orders      o  ON o.id = kq.order_id
     JOIN order_items oi ON oi.order_id = o.id
-    WHERE kq.status IN ('pending','preparing','ready') AND kq.tenant_id = ' . tenantId() . '
+    WHERE kq.status IN ('pending','preparing','ready') AND kq.tenant_id = {$tenantId}
     {$stationFilter}
     GROUP BY kq.id
     ORDER BY kq.pushed_at ASC
@@ -118,7 +122,7 @@ sseOut('meta', ['station' => $stationParam]);
 sseOut('init', array_values(buildOrderBatch($pdo, $active, $MOD_SQL)));
 
 /* ── Step 2: lastId baseline ────────────────────────────────────────────── */
-$lastId = (int)$pdo->query("SELECT COALESCE(MAX(id),0) FROM kds_queue WHERE tenant_id=' . tenantId() . '")->fetchColumn();
+$lastId = (int)$pdo->query("SELECT COALESCE(MAX(id),0) FROM kds_queue WHERE tenant_id=$tenantId")->fetchColumn();
 
 /* ── Step 3: polling loop ───────────────────────────────────────────────── */
 $newStmt = $pdo->prepare($NEW_SQL);
@@ -128,7 +132,7 @@ while (true) {
     if (connection_aborted()) exit;
 
     try {
-        $newStmt->execute([':last_id' => $lastId]);
+        $newStmt->execute([':last_id' => $lastId, ':tid' => $tenantId]);
         $rows = $newStmt->fetchAll();
 
         if (!empty($rows)) {

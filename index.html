@@ -1542,6 +1542,7 @@ async function submitOrder() {
 ═══════════════════════════════════════ */
 function trackAndClose() {
   closeModal('cart-modal');
+  // Keep pill visible - do NOT collapse it
   // Restore orders from localStorage if somehow lost in memory
   if (orders.length === 0) {
     try {
@@ -1901,6 +1902,24 @@ document.addEventListener('change', e => {
 
 <script>
 
+function showTrackModal() {
+  const phone = document.getElementById('f-phone')?.value?.trim() || '';
+  const orderId = document.getElementById('order-ref')?.textContent?.trim() || '';
+  // Open track_orders in an iframe modal
+  const overlay = document.createElement('div');
+  overlay.id = 'track-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:480px;height:80vh;display:flex;flex-direction:column;overflow:hidden;position:relative">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.2rem;border-bottom:1px solid #eee">
+        <span style="font-weight:700;font-size:.95rem">📋 Track Your Order</span>
+        <button onclick="document.getElementById('track-overlay').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#888">✕</button>
+      </div>
+      <iframe src="track_orders.php" style="flex:1;border:none;width:100%" loading="lazy"></iframe>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
 function printCustomerReceipt() {
   if (!orderRef) { alert('Order ID မရသေး'); return; }
   const w = window.open('receipt.php?id=' + (window._dbOrderId || orderRef), '_blank', 'width=420,height=650');
