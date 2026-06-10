@@ -1,5 +1,5 @@
-const CACHE_NAME = 'noodlehaus-v20260605';
-const STATIC_CACHE = 'noodlehaus-static-v20260605';
+const CACHE_NAME = 'noodlehaus-v20260610';
+const STATIC_CACHE = 'noodlehaus-static-v20260610';
 const QUEUE_DB = 'noodlehaus-queue';
 
 // Cache မည့် files

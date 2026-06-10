@@ -1825,6 +1825,8 @@ function applyLang() {
   window._catT = currentLang === 'mm' ? catMM : catEN;
   if(typeof renderCats==='function') renderCats();
   if(typeof renderMenu==='function') renderMenu();
+  var titleEl=document.getElementById('menu-title');
+  if(titleEl) titleEl.textContent=currentLang==='mm'?(activeCat==='All'?'အကုန်လုံး':(window._catT&&window._catT[activeCat])||activeCat):(activeCat==='All'?'All Menu':activeCat);
   const btn = document.getElementById('lang-toggle');
   if (btn) btn.textContent = currentLang === 'mm' ? 'မြန်မာ' : 'EN';
   const map = currentLang === 'mm' ? I18N.mm : I18N.en;
