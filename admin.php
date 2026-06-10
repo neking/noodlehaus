@@ -80,17 +80,40 @@ if (isset($_GET['api'])) { // GET+POST both handled
         $b = json_decode(file_get_contents('php://input'), true);
         $inputUser = $b['user'] ?? '';
         $inputPass = $b['pass'] ?? '';
-        // Hash မသတ်မှတ်ရသေးဘဲဆိုရင် default password သုံး (first run)
+
+        // ── Brute-force lockout ──────────────────────────────
+        $ip        = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $lockFile  = sys_get_temp_dir() . '/nh_fail_' . md5($ip) . '.json';
+        $maxFails  = 5;
+        $lockMins  = 15;
+        $lockData  = file_exists($lockFile) ? json_decode(file_get_contents($lockFile), true) : ['fails'=>0,'until'=>0];
+        if (time() < ($lockData['until'] ?? 0)) {
+            $remaining = ceil(($lockData['until'] - time()) / 60);
+            echo json_encode(['ok'=>false,'msg'=>"Too many failed attempts. Try again in {$remaining} minute(s)."]);
+            exit;
+        }
+        // ────────────────────────────────────────────────────
+
         $hash = ADMIN_PASS_HASH ?: password_hash('noodlehaus2024', PASSWORD_BCRYPT);
         if ($inputUser === ADMIN_USER && password_verify($inputPass, $hash)) {
             $_SESSION['admin'] = true;
-            // Session မှာ hash သိမ်းထား (brute force ကာကွယ်)
             $_SESSION['login_time'] = time();
+            // Reset fail counter on success
+            @unlink($lockFile);
             echo json_encode(['ok'=>true]);
         } else {
-            // Timing attack ကာကွယ်ဖို့ constant time compare
-            usleep(200000); // 0.2s delay on wrong password
-            echo json_encode(['ok'=>false,'msg'=>'Wrong username or password']);
+            usleep(200000);
+            $lockData['fails'] = ($lockData['fails'] ?? 0) + 1;
+            $remaining = $maxFails - $lockData['fails'];
+            if ($lockData['fails'] >= $maxFails) {
+                $lockData['until'] = time() + ($lockMins * 60);
+                $lockData['fails'] = 0;
+                file_put_contents($lockFile, json_encode($lockData));
+                echo json_encode(['ok'=>false,'msg'=>"Too many failed attempts. Locked for {$lockMins} minutes."]);
+            } else {
+                file_put_contents($lockFile, json_encode($lockData));
+                echo json_encode(['ok'=>false,'msg'=>"Wrong username or password. {$remaining} attempt(s) remaining."]);
+            }
         }
         exit;
     }
@@ -1114,6 +1137,15 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       </div>
       <div class="nav-item" onclick="showPage('saas')" id="nav-saas">
         <span class="nav-icon">🌐</span> SaaS
+      </div>
+      <div class="nav-item" onclick="showPage('promos')" id="nav-promos">
+        <span class="nav-icon">🏷️</span> Promotions
+      </div>
+      <div class="nav-item" onclick="showPage('expenses')" id="nav-expenses">
+        <span class="nav-icon">💰</span> Expenses
+      </div>
+      <div class="nav-item" onclick="showPage('schedule')" id="nav-schedule">
+        <span class="nav-icon">📅</span> Scheduling
       </div>
       <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
         <span class="nav-icon">👥</span> Staff
@@ -3071,16 +3103,19 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog','staff'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog','staff','promos','expenses','schedule'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
     const mb = document.getElementById('mnav-'+p);
     if (mb) mb.classList.toggle('active', p===page);
   });
-  if (page==='dashboard') { loadStats(); loadOrders(); loadAnalytics(7); }
+  if (page==='dashboard') { loadStats(); loadOrders(); loadAnalytics(7); loadHealthCheck(); }
   if (page==='stocklog')  { loadStockLogs(); }
   if (page==='staff')      { loadStaff(); }
+  if (page==='promos')     { promoLoad(); }
+  if (page==='expenses')   { if(typeof expLoad==='function') expLoad(); }
+  if (page==='schedule')   { if(typeof schedLoad==='function') schedLoad(); }
   if (page==='menu')      { loadMenuItems(); }
   if (page==='orders')    { loadOrders(); }
   if (page==='settings')  { loadSettings(); }
@@ -3092,6 +3127,8 @@ function showPage(page) {
   if (page==='branches')   { branchLoad(); }
   if (page==='delivery')   { delLoad(); }
   if (page==='promos')     { promoLoad(); }
+  if (page==='expenses')   { if(typeof expLoad==='function') expLoad(); }
+  if (page==='schedule')   { if(typeof schedLoad==='function') schedLoad(); }
   if (page==='expenses')   { expLoad(); }
   if (page==='schedule')   { schedLoad(); }
   if (page==='saas')       { saasLoad(); }

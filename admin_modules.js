@@ -99,3 +99,43 @@ async function saasLoad(){await saasLoadStats();await saasLoadTenants()}
 async function saasLoadStats(){try{const d=await(await fetch('tenant_api.php?action=stats')).json();if(!d.ok)return;const s=d.stats;document.getElementById('saas-stats').innerHTML=`<div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.5rem;font-weight:700">${s.total_tenants}</div><div style="font-size:.78rem;color:var(--text-muted)">🌐 Total Tenants</div></div><div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.5rem;font-weight:700;color:#27ae60">${s.paid_tenants}</div><div style="font-size:.78rem;color:var(--text-muted)">💰 Paid</div></div><div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.5rem;font-weight:700">${s.free_tenants}</div><div style="font-size:.78rem;color:var(--text-muted)">🆓 Free</div></div><div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.1rem;font-weight:700;color:#27ae60">${Number(s.total_revenue).toLocaleString()}</div><div style="font-size:.78rem;color:var(--text-muted)">💰 Total Revenue</div></div>`}catch(e){}}
 async function saasLoadTenants(){const tbody=document.getElementById('saas-tbody');try{const d=await(await fetch('tenant_api.php?action=list')).json();if(!d.ok)throw new Error(d.msg);if(!d.tenants.length){tbody.innerHTML='<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">No tenants</td></tr>';return}const pC={free:'var(--text-muted)',basic:'#3498db',pro:'#f39c12',enterprise:'#27ae60'};tbody.innerHTML=d.tenants.map(t=>{const a=parseInt(t.is_active);return`<tr style="border-bottom:1px solid var(--border);${!a?'opacity:.5':''}"><td style="padding:.7rem 1rem"><div style="font-weight:600">${escHtml(t.name)}</div><div style="font-size:.78rem;color:var(--text-muted)">${escHtml(t.slug)}</div></td><td style="padding:.7rem 1rem"><div>${escHtml(t.owner_name)}</div><div style="font-size:.78rem;color:var(--text-muted)">${escHtml(t.owner_email)}</div></td><td style="padding:.7rem 1rem;text-align:center"><span style="color:${pC[t.plan]};font-weight:600;text-transform:uppercase;font-size:.82rem">${t.plan}</span></td><td style="padding:.7rem 1rem;text-align:right;font-weight:600">${Number(t.total_orders||0).toLocaleString()}</td><td style="padding:.7rem 1rem;text-align:right">${Number(t.total_revenue||0).toLocaleString()}</td><td style="padding:.7rem 1rem;text-align:center"><span style="color:${a?'#27ae60':'#e74c3c'};font-size:.82rem;font-weight:600">${a?'✅':'❌'}</span></td><td style="padding:.7rem 1rem;text-align:center">${t.id>1?`<button class="btn btn-ghost btn-sm" onclick="saasToggle(${t.id})">${a?'Disable':'Enable'}</button>`:''}</td></tr>`}).join('')}catch(e){tbody.innerHTML=`<tr><td colspan="7" style="padding:2rem;text-align:center;color:#e74c3c">${e.message}</td></tr>`}}
 async function saasToggle(id){if(!confirm('Tenant status ပြောင်းမည်?'))return;try{const d=await(await fetch('tenant_api.php?action=toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();if(!d.ok)throw new Error(d.msg);showToast('✅ Updated');saasLoad()}catch(e){showToast('❌ '+e.message,true)}}
+
+/* ══ HEALTH CHECK WIDGET ══ */
+async function loadHealthCheck() {
+  try {
+    const d = await (await fetch('/health.php')).json();
+    const errCount = d.checks.recent_errors || 0;
+    const disk = d.checks.disk_free_gb;
+    const dbOk = d.checks.db === 'ok';
+    const color = d.status === 'ok' ? '#27ae60' : '#e74c3c';
+    const html = `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-top:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem">
+          <span style="font-weight:700;font-size:.9rem">🩺 System Health</span>
+          <span style="color:${color};font-size:.82rem;font-weight:600">${d.status.toUpperCase()}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
+          <div style="text-align:center;background:var(--surface);border-radius:8px;padding:.5rem">
+            <div style="font-size:1.2rem">${dbOk?'✅':'❌'}</div>
+            <div style="font-size:.72rem;color:var(--text-muted)">Database</div>
+          </div>
+          <div style="text-align:center;background:var(--surface);border-radius:8px;padding:.5rem">
+            <div style="font-size:1rem;font-weight:700;color:${errCount>0?'#e74c3c':'#27ae60'}">${errCount}</div>
+            <div style="font-size:.72rem;color:var(--text-muted)">Errors (1h)</div>
+          </div>
+          <div style="text-align:center;background:var(--surface);border-radius:8px;padding:.5rem">
+            <div style="font-size:1rem;font-weight:700">${disk}GB</div>
+            <div style="font-size:.72rem;color:var(--text-muted)">Free Disk</div>
+          </div>
+        </div>
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:.5rem;text-align:right">${d.time}</div>
+      </div>`;
+    const dash = document.getElementById('page-dashboard');
+    if (dash) {
+      let hw = document.getElementById('health-widget');
+      if (!hw) { hw = document.createElement('div'); hw.id = 'health-widget'; dash.appendChild(hw); }
+      hw.innerHTML = html;
+    }
+  } catch(e) { console.warn('Health check failed:', e.message); }
+}
+/* ══ END HEALTH CHECK ══ */
