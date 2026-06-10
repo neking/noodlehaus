@@ -1517,9 +1517,8 @@ async function submitOrder() {
     orders.push({id: orderId, ref: orderRef, ts: Date.now()});
     try { localStorage.setItem('nh_orders', JSON.stringify(orders)); } catch(e){}
 
-    // Auto-start tracking immediately
-    showTrackerPill();
-    fetchAllTrackers();
+    // Auto-start tracking immediately - show and expand
+    openTracker();
 
     // Clear cart
     cart = {}; saveCart(); renderCartUI(); renderMenu();
@@ -1542,7 +1541,7 @@ async function submitOrder() {
 ═══════════════════════════════════════ */
 function trackAndClose() {
   closeModal('cart-modal');
-  // Keep pill visible - do NOT collapse it
+  // Keep pill visible AND expanded
   // Restore orders from localStorage if somehow lost in memory
   if (orders.length === 0) {
     try {
@@ -1580,6 +1579,16 @@ function saveOrders() {
   try { localStorage.setItem('nh_orders', JSON.stringify(orders)); } catch(e){}
 }
 
+function openTracker() {
+  // Show pill AND auto-expand it
+  if (orders.length === 0) return;
+  document.getElementById('tracker-pill').classList.add('show');
+  const exp = document.getElementById('tp-expanded');
+  const arr = document.getElementById('tp-arrow');
+  exp.style.display = 'block';
+  arr.classList.add('open');
+  fetchAllTrackers();
+}
 function showTrackerPill() {
   if (orders.length === 0) return;
   document.getElementById('tracker-pill').classList.add('show');
