@@ -649,13 +649,13 @@ header{
 </header>
 
 <!-- FLOATING CART BAR -->
-<div id="cart-bar">
+<div id="cart-bar" onclick="openCart()">
   <div class="cb-left">
     <div class="cb-count" id="cb-count">0</div>
     <div class="cb-items" id="cb-items"></div>
   </div>
   <span class="cb-total" id="cb-total">$0</span>
-  <button class="cb-checkout" onclick="openDelivery()">Checkout →</button>
+  <button class="cb-checkout" onclick="event.stopPropagation();openDelivery()">Checkout →</button>
 </div>
 
 <!-- ── MODIFIER ITEM MODAL ── -->
@@ -723,7 +723,7 @@ header{
   <div id="footer-social" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem"></div>
   <div id="footer-copyright" style="font-size:.75rem;opacity:.6">© 2026 NoodleHaus</div>
   <div style="text-align:center;padding:.75rem;border-top:0.5px solid var(--border,#eee)">
-    <a href="track_orders.php" style="font-size:.8rem;color:var(--muted,#888);text-decoration:none">
+    <a href="#" onclick="showTrackModal();return false;" style="font-size:.8rem;color:var(--muted,#888);text-decoration:none">
       📋 Track your order
     </a>
   </div>
