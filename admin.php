@@ -1094,8 +1094,8 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     </div>
     <div style="padding:.5rem 1rem;border-bottom:1px solid rgba(255,255,255,.1)">
       <select id="branch-select" onchange="switchBranch(this.value)"
-        style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:.8rem;cursor:pointer">
-        <option value="0">🏢 All Branches</option>
+        style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:#2a1f14;color:#fff;font-size:.8rem;cursor:pointer">
+        <option value="0" style="background:#2a1f14;color:#fff">🏢 All Branches</option>
       </select>
     </div>
     <nav>
@@ -1149,6 +1149,9 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       </div>
       <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
         <span class="nav-icon">👥</span> Staff
+      </div>
+      <div class="nav-item" onclick="showPage('storefront')" id="nav-storefront">
+        <span class="nav-icon">🎨</span> Storefront
       </div>
       <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
         <span class="nav-icon">⚙️</span> Settings
@@ -2198,7 +2201,230 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
           <input type="hidden" id="st-promo_codes">
         </div>
 
-        <!-- HEADER APPEARANCE -->
+   
+        <!-- ORDER SETTINGS -->
+        <div class="card">
+          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem">📋 Order Settings</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div>
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">Order Number Prefix</label>
+              <input type="text" id="st-order_prefix" placeholder="NH" maxlength="5" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+              <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">e.g. NH → NH-000001</div>
+            </div>
+            <div>
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">Default Prep Time (min)</label>
+              <input type="number" id="st-default_prep_time" placeholder="20" min="1" max="120" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+            </div>
+            <div>
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">Tax Rate (%)</label>
+              <input type="number" id="st-tax_rate" placeholder="0" min="0" max="30" step="0.5" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+              <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">0 = tax မပါ</div>
+            </div>
+            <div>
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">Min Order Amount (MMK)</label>
+              <input type="number" id="st-min_order_amount" placeholder="1000" min="0" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+            </div>
+          </div>
+          <div style="margin-top:1rem">
+            <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">Receipt Header Text</label>
+            <input type="text" id="st-receipt_header" placeholder="Thank you for dining with us!" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+          </div>
+          <div style="margin-top:.75rem">
+            <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">Receipt Footer Text</label>
+            <input type="text" id="st-receipt_footer" placeholder="Please come again! 🙏" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+          </div>
+        </div>
+
+        <!-- NOTIFICATION SETTINGS -->
+        <div class="card" style="margin-top:1rem">
+          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem">🔔 Notification Settings</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div>
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">KDS Sound Alert</label>
+              <select id="st-kds_sound" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+                <option value="1">✅ On</option>
+                <option value="0">❌ Off</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">KDS Overdue Threshold (min)</label>
+              <input type="number" id="st-kds_overdue_mins" placeholder="15" min="5" max="60" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+            </div>
+            <div>
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">Waiter Order Alert</label>
+              <select id="st-waiter_alert" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+                <option value="1">✅ On</option>
+                <option value="0">❌ Off</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.3rem">Default Language</label>
+              <select id="st-default_lang" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88rem">
+                <option value="en">English</option>
+                <option value="mm">မြန်မာ</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Stamps required for reward</label>
+            <input type="number" id="st-loyalty_stamps_required" min="1" max="50" value="10"
+              style="width:100px;font-size:.85rem;padding:.35rem .6rem;border:1px solid #ddd;border-radius:6px">
+          </div>
+
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Reward description</label>
+            <input type="text" id="st-loyalty_reward_label" value="Free item တစ်ခု"
+              style="width:100%;font-size:.85rem;padding:.35rem .6rem;border:1px solid #ddd;border-radius:6px">
+          </div>
+
+          <!-- Loyalty cards list -->
+          <div style="margin-top:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+              <div style="font-size:.82rem;font-weight:600">Customer Stamp Cards</div>
+              <button onclick="loadLoyaltyCards()" style="padding:.3rem .7rem;background:#e84c2b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.78rem">🔄 Refresh</button>
+            </div>
+            <div id="loyalty-cards-list" style="font-size:.82rem;color:var(--muted)">— Load လုပ်ရန် Refresh နှိပ်ပါ —</div>
+
+          <!-- Loyalty Edit Modal -->
+          <div id="loy-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+            <div style="background:var(--bg);border-radius:14px;padding:1.5rem;max-width:340px;width:92%;position:relative">
+              <button onclick="document.getElementById('loy-edit-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+              <div style="font-weight:600;margin-bottom:1rem">✏️ Edit Loyalty Card</div>
+              <input type="hidden" id="loy-edit-phone-orig">
+              <div style="margin-bottom:.6rem">
+                <label style="font-size:.8rem;color:var(--muted)">Phone</label>
+                <input type="text" id="loy-edit-phone" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="margin-bottom:.6rem">
+                <label style="font-size:.8rem;color:var(--muted)">Stamps</label>
+                <input type="number" id="loy-edit-stamps" min="0" max="999" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="margin-bottom:1rem">
+                <label style="font-size:.8rem;color:var(--muted)">Total Redeemed</label>
+                <input type="number" id="loy-edit-redeemed" min="0" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="display:flex;gap:.5rem">
+                <button onclick="saveLoyaltyEdit()" style="flex:1;padding:.6rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">💾 Save</button>
+                <button onclick="deleteLoyaltyCard()" style="padding:.6rem 1rem;background:#dc3545;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">🗑 Delete</button>
+              </div>
+            </div>
+          </div>
+          </div>
+
+
+
+
+
+          <!-- Live footer preview -->
+          <div style="margin-top:.8rem">
+            <div style="font-size:.75rem;font-weight:500;color:var(--muted);margin-bottom:.4rem">Preview</div>
+            <div id="footer-preview-box" style="border-radius:8px;padding:1rem 1.2rem;position:relative;overflow:hidden;min-height:60px">
+              <div id="fp-overlay" style="position:absolute;inset:0;background:#1a1209;pointer-events:none"></div>
+              <div id="fp-bg"      style="position:absolute;inset:0;background-size:cover;background-position:center;opacity:.18;pointer-events:none;display:none"></div>
+              <div style="position:relative;z-index:1;color:#b8a48a;font-size:.82rem">
+                <span id="fp-store" style="font-family:'Playfair Display',serif;font-size:1rem;color:#fff">NoodleHaus</span><br>
+                <span id="fp-copy" style="font-size:.72rem">© 2025 NoodleHaus. All rights reserved.</span>
+              </div>
+            </div>
+          </div>
+
+        <button class="btn btn-primary" onclick="saveSettings()" style="width:100%;padding:.85rem;font-size:.95rem">
+          💾 Save Settings
+        </button>
+
+        <!-- PAYMENT -->
+        <div class="card" style="margin-bottom:1.5rem">
+            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.4rem">KPay QR Code Image</label>
+            <div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">Customer checkout မှာ KPay ရွေးရင် ဒီ QR image ပြမည်</div>
+            <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+              <input type="file" id="kpay-qr-input" accept="image/*"
+                onchange="uploadKpayQr(this)"
+                style="font-size:.82rem;max-width:220px">
+              <button type="button" id="kpay-qr-remove-btn"
+                onclick="removeKpayQr()"
+                style="display:none;padding:.3rem .7rem;background:#dc3545;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem">✕ Remove</button>
+            </div>
+            <div id="kpay-qr-preview" style="margin-top:.6rem;display:none">
+              <img id="kpay-qr-img" src="" alt="KPay QR"
+                style="max-width:100px;max-height:100px;border:2px solid #e84c2b;border-radius:8px;object-fit:contain;background:#fff;padding:4px">
+              <div id="kpay-qr-status" style="font-size:.75rem;color:#28a745;margin-top:.3rem">✅ QR image ထည့်ပြီး</div>
+            </div>
+            <div id="kpay-qr-no-img" style="font-size:.78rem;color:var(--muted);margin-top:.4rem">⚠️ QR image မရှိသေး — upload လုပ်ပါ</div>
+          </div>
+
+          <!-- ═══ LOYALTY SETTINGS ═══ -->
+          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem;margin-top:1.5rem">🎟 Loyalty Program</div>
+
+          <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem">
+            <label style="font-size:.85rem;font-weight:600">Enable Loyalty Program</label>
+            <select id="st-loyalty_enabled" style="font-size:.82rem;padding:.3rem .6rem;border:1px solid #ddd;border-radius:6px">
+              <option value="1">✅ On</option>
+              <option value="0">❌ Off</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Stamps required for reward</label>
+            <input type="number" id="st-loyalty_stamps_required" min="1" max="50" value="10"
+              style="width:100px;font-size:.85rem;padding:.35rem .6rem;border:1px solid #ddd;border-radius:6px">
+          </div>
+
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Reward description</label>
+            <input type="text" id="st-loyalty_reward_label" value="Free item တစ်ခု"
+              style="width:100%;font-size:.85rem;padding:.35rem .6rem;border:1px solid #ddd;border-radius:6px">
+          </div>
+
+          <!-- Loyalty cards list -->
+          <div style="margin-top:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+              <div style="font-size:.82rem;font-weight:600">Customer Stamp Cards</div>
+              <button onclick="loadLoyaltyCards()" style="padding:.3rem .7rem;background:#e84c2b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.78rem">🔄 Refresh</button>
+            </div>
+            <div id="loyalty-cards-list" style="font-size:.82rem;color:var(--muted)">— Load လုပ်ရန် Refresh နှိပ်ပါ —</div>
+
+          <!-- Loyalty Edit Modal -->
+          <div id="loy-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+            <div style="background:var(--bg);border-radius:14px;padding:1.5rem;max-width:340px;width:92%;position:relative">
+              <button onclick="document.getElementById('loy-edit-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+              <div style="font-weight:600;margin-bottom:1rem">✏️ Edit Loyalty Card</div>
+              <input type="hidden" id="loy-edit-phone-orig">
+              <div style="margin-bottom:.6rem">
+                <label style="font-size:.8rem;color:var(--muted)">Phone</label>
+                <input type="text" id="loy-edit-phone" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="margin-bottom:.6rem">
+                <label style="font-size:.8rem;color:var(--muted)">Stamps</label>
+                <input type="number" id="loy-edit-stamps" min="0" max="999" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="margin-bottom:1rem">
+                <label style="font-size:.8rem;color:var(--muted)">Total Redeemed</label>
+                <input type="number" id="loy-edit-redeemed" min="0" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
+              </div>
+              <div style="display:flex;gap:.5rem">
+                <button onclick="saveLoyaltyEdit()" style="flex:1;padding:.6rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">💾 Save</button>
+                <button onclick="deleteLoyaltyCard()" style="padding:.6rem 1rem;background:#dc3545;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">🗑 Delete</button>
+          </div>
+      </div>
+    </div>
+
+      </div>
+    </div>
+
+    <div id="page-storefront" style="display:none">
+      <div class="page-head">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <button class="hamburger" onclick="openSidebar()" title="Menu">☰</button>
+          <div class="page-title">🎨 Storefront</div>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Save</button>
+      </div>
+      <div class="content">
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem">Customer ordering page (/index.html) ရဲ့ appearance ပြင်ဆင်ပါ</p>
+     <!-- HEADER APPEARANCE -->
         <div style="margin-bottom:1.5rem">
           <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem">🖥 Header Appearance</div>
           <div class="form-grid">
@@ -2417,168 +2643,8 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         </div>
 
         <!-- FOOTER APPEARANCE -->
-        <div style="margin-bottom:1.5rem">
-          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem">🎨 Footer Appearance</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Background Color</label>
-              <input type="color" id="st-footer_bg_color" value="#1a1209" style="height:40px;padding:.3rem;width:100%">
-            </div>
-            <div class="form-group">
-              <label>Color Opacity (0–1)</label>
-              <input type="range" id="st-footer_bg_opacity" min="0" max="1" step="0.05" value="1"
-                oninput="document.getElementById('footer-opacity-val').textContent=this.value"
-                style="width:100%;margin-top:8px">
-              <span style="font-size:.82rem;color:var(--muted)" id="footer-opacity-val">1</span>
-            </div>
-          </div>
-
-          <!-- Footer background image upload -->
-          <div class="form-group" style="margin-top:.5rem">
-            <label>Footer Background Image</label>
-            <div style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap">
-              <img id="footer-bg-preview" src="" alt="" style="max-height:60px;max-width:120px;border-radius:6px;object-fit:cover;display:none;border:1px solid var(--border)">
-              <div>
-                <input type="file" id="footer-bg-file" accept="image/*"
-                  onchange="uploadFooterImg(this,'bg')" style="font-size:.82rem">
-                <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">JPG/PNG/WEBP — max 3MB</div>
-              </div>
-              <button class="btn btn-danger btn-sm" id="footer-bg-remove-btn"
-                onclick="removeFooterImg('bg')" style="display:none">✕ Remove</button>
-            </div>
-          </div>
-
-          <!-- Footer logo image upload -->
-          <div class="form-group" style="margin-top:.5rem">
-            <label>Footer Logo / Brand Image</label>
-            <div style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap">
-              <img id="footer-logo-preview" src="" alt="" style="max-height:60px;max-width:120px;border-radius:6px;object-fit:contain;display:none;border:1px solid var(--border)">
-              <div>
-                <input type="file" id="footer-logo-file" accept="image/*"
-                  onchange="uploadFooterImg(this,'logo')" style="font-size:.82rem">
-                <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">PNG with transparency recommended</div>
-              </div>
-              <button class="btn btn-danger btn-sm" id="footer-logo-remove-btn"
-                onclick="removeFooterImg('logo')" style="display:none">✕ Remove</button>
-            </div>
-          </div>
-
-          <!-- ═══════════════════════════════════════════════════ -->
-          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem;margin-top:1.5rem">💳 Payment Settings</div>
-
-          <!-- Staff Management -->
-          <div style="background:var(--warm);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem">
-            <div style="font-weight:600;margin-bottom:.75rem;font-size:.95rem">👥 Staff Management</div>
-            <div id="staff-list-admin" style="margin-bottom:.75rem"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.5rem;margin-bottom:.5rem">
-              <input type="text" id="new-staff-name" placeholder="Name" style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.85rem">
-              <input type="text" id="new-staff-pin" placeholder="PIN (4-6 digits)" maxlength="6" style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.85rem">
-              <button class="btn btn-primary btn-sm" onclick="addStaff()">+ Add</button>
-            </div>
-            <div style="font-size:.78rem;color:var(--muted)">Default PINs: Ko Aung=1234 · Ma Aye=5678 · Manager=0000</div>
-          </div>
-
-<!-- KPay QR Image Upload -->
-          <div style="margin-bottom:1rem">
-            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.4rem">KPay QR Code Image</label>
-            <div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">Customer checkout မှာ KPay ရွေးရင် ဒီ QR image ပြမည်</div>
-            <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
-              <input type="file" id="kpay-qr-input" accept="image/*"
-                onchange="uploadKpayQr(this)"
-                style="font-size:.82rem;max-width:220px">
-              <button type="button" id="kpay-qr-remove-btn"
-                onclick="removeKpayQr()"
-                style="display:none;padding:.3rem .7rem;background:#dc3545;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem">✕ Remove</button>
-            </div>
-            <div id="kpay-qr-preview" style="margin-top:.6rem;display:none">
-              <img id="kpay-qr-img" src="" alt="KPay QR"
-                style="max-width:180px;max-height:180px;border:2px solid #e84c2b;border-radius:10px;object-fit:contain;background:#fff;padding:6px">
-              <div id="kpay-qr-status" style="font-size:.75rem;color:#28a745;margin-top:.3rem">✅ QR image ထည့်ပြီး</div>
-            </div>
-            <div id="kpay-qr-no-img" style="font-size:.78rem;color:var(--muted);margin-top:.4rem">⚠️ QR image မရှိသေး — upload လုပ်ပါ</div>
-          </div>
-
-          <!-- ═══ LOYALTY SETTINGS ═══ -->
-          <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.8rem;margin-top:1.5rem">🎟 Loyalty Program</div>
-
-          <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem">
-            <label style="font-size:.85rem;font-weight:600">Enable Loyalty Program</label>
-            <select id="st-loyalty_enabled" style="font-size:.82rem;padding:.3rem .6rem;border:1px solid #ddd;border-radius:6px">
-              <option value="1">✅ On</option>
-              <option value="0">❌ Off</option>
-            </select>
-          </div>
-
-          <div style="margin-bottom:.75rem">
-            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Stamps required for reward</label>
-            <input type="number" id="st-loyalty_stamps_required" min="1" max="50" value="10"
-              style="width:100px;font-size:.85rem;padding:.35rem .6rem;border:1px solid #ddd;border-radius:6px">
-          </div>
-
-          <div style="margin-bottom:.75rem">
-            <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Reward description</label>
-            <input type="text" id="st-loyalty_reward_label" value="Free item တစ်ခု"
-              style="width:100%;font-size:.85rem;padding:.35rem .6rem;border:1px solid #ddd;border-radius:6px">
-          </div>
-
-          <!-- Loyalty cards list -->
-          <div style="margin-top:1rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-              <div style="font-size:.82rem;font-weight:600">Customer Stamp Cards</div>
-              <button onclick="loadLoyaltyCards()" style="padding:.3rem .7rem;background:#e84c2b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.78rem">🔄 Refresh</button>
-            </div>
-            <div id="loyalty-cards-list" style="font-size:.82rem;color:var(--muted)">— Load လုပ်ရန် Refresh နှိပ်ပါ —</div>
-
-          <!-- Loyalty Edit Modal -->
-          <div id="loy-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
-            <div style="background:var(--bg);border-radius:14px;padding:1.5rem;max-width:340px;width:92%;position:relative">
-              <button onclick="document.getElementById('loy-edit-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
-              <div style="font-weight:600;margin-bottom:1rem">✏️ Edit Loyalty Card</div>
-              <input type="hidden" id="loy-edit-phone-orig">
-              <div style="margin-bottom:.6rem">
-                <label style="font-size:.8rem;color:var(--muted)">Phone</label>
-                <input type="text" id="loy-edit-phone" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
-              </div>
-              <div style="margin-bottom:.6rem">
-                <label style="font-size:.8rem;color:var(--muted)">Stamps</label>
-                <input type="number" id="loy-edit-stamps" min="0" max="999" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
-              </div>
-              <div style="margin-bottom:1rem">
-                <label style="font-size:.8rem;color:var(--muted)">Total Redeemed</label>
-                <input type="number" id="loy-edit-redeemed" min="0" style="width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;margin-top:2px">
-              </div>
-              <div style="display:flex;gap:.5rem">
-                <button onclick="saveLoyaltyEdit()" style="flex:1;padding:.6rem;background:#e84c2b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">💾 Save</button>
-                <button onclick="deleteLoyaltyCard()" style="padding:.6rem 1rem;background:#dc3545;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">🗑 Delete</button>
-              </div>
-            </div>
-          </div>
-          </div>
-
-
-
-
-
-          <!-- Live footer preview -->
-          <div style="margin-top:.8rem">
-            <div style="font-size:.75rem;font-weight:500;color:var(--muted);margin-bottom:.4rem">Preview</div>
-            <div id="footer-preview-box" style="border-radius:8px;padding:1rem 1.2rem;position:relative;overflow:hidden;min-height:60px">
-              <div id="fp-overlay" style="position:absolute;inset:0;background:#1a1209;pointer-events:none"></div>
-              <div id="fp-bg"      style="position:absolute;inset:0;background-size:cover;background-position:center;opacity:.18;pointer-events:none;display:none"></div>
-              <div style="position:relative;z-index:1;color:#b8a48a;font-size:.82rem">
-                <span id="fp-store" style="font-family:'Playfair Display',serif;font-size:1rem;color:#fff">NoodleHaus</span><br>
-                <span id="fp-copy" style="font-size:.72rem">© 2025 NoodleHaus. All rights reserved.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button class="btn btn-primary" onclick="saveSettings()" style="width:100%;padding:.85rem;font-size:.95rem">
-          💾 Save Settings
-        </button>
-      </div>
     </div>
-
+    </div>
     <!-- ── ORDERS PAGE ── -->
     <div id="page-orders" style="display:none">
       <div class="page-head">
@@ -2984,6 +3050,8 @@ let currentBranchId = 0; // 0 = all branches
       const opt = document.createElement('option');
       opt.value = b.id;
       opt.textContent = '🏢 ' + b.name + (b.is_active?'':' (inactive)');
+      opt.style.background = '#2a1f14';
+      opt.style.color = '#fff';
       sel.appendChild(opt);
     });
   }).catch(()=>{});
@@ -3103,7 +3171,7 @@ async function doLogout() {
    PAGE NAV
 ═══════════════════════════════════════ */
 function showPage(page) {
-  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog','staff','promos','expenses','schedule'].forEach(p => {
+  ['dashboard','menu','orders','tables','settings','crm','shift','stock','reserve','branches','delivery','stocklog','staff','promos','expenses','schedule','storefront'].forEach(p => {
     document.getElementById('page-'+p).style.display   = p===page ? '' : 'none';
     document.getElementById('nav-'+p).classList.toggle('active', p===page);
     // Mobile bottom nav sync
@@ -3119,6 +3187,7 @@ function showPage(page) {
   if (page==='menu')      { loadMenuItems(); }
   if (page==='orders')    { loadOrders(); }
   if (page==='settings')  { loadSettings(); }
+  if (page==='storefront') { loadSettings(); }
   if (page==='tables')    { loadTables(); }
   if (page==='crm')       { crmLoadCustomers(); }
   if (page==='shift')      { shiftLoad(); }
