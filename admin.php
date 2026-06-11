@@ -1130,7 +1130,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <span>🍜 Noodle<span>Haus</span><span class="sidebar-badge">Admin</span></span>
       <button onclick="closeSidebar()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.2rem;cursor:pointer;display:none" id="sidebar-close-btn">✕</button>
     </div>
-    <div style="padding:.5rem 1rem;border-bottom:1px solid rgba(255,255,255,.1)">
+    <div style="display:none">
       <select id="branch-select" onchange="switchBranch(this.value)"
         style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:#2a1f14;color:#fff;font-size:.8rem;cursor:pointer">
         <option value="0" style="background:#2a1f14;color:#fff">🏢 All Branches</option>
@@ -1186,6 +1186,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <span class="nav-icon">🏢</span> Branches
       </div>
       <div class="nav-section-divider"></div>
+      <div class="nav-section-header">Admin</div>
       <div class="nav-item" onclick="showPage('saas')" id="nav-saas">
         <span class="nav-icon">🌐</span> SaaS
       </div>
