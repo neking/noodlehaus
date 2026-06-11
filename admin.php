@@ -1148,6 +1148,13 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('menu')" id="nav-menu">
         <span class="nav-icon">🍜</span> Menu Items
       </div>
+      <div class="nav-section-divider"></div>
+      <div class="nav-section-header">Branch Ops</div>
+      <div id="branch-ops-selector">
+        <select id="branch-select-ops" onchange="switchBranch(this.value)">
+          <option value="0">🏢 All Branches</option>
+        </select>
+      </div>
       <div class="nav-item" onclick="showPage('orders')" id="nav-orders">
         <span class="nav-icon">📋</span> Orders
       </div>
@@ -1178,6 +1185,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
       <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
         <span class="nav-icon">🏢</span> Branches
       </div>
+      <div class="nav-section-divider"></div>
       <div class="nav-item" onclick="showPage('saas')" id="nav-saas">
         <span class="nav-icon">🌐</span> SaaS
       </div>
@@ -3088,16 +3096,19 @@ let currentBranchId = 0; // 0 = all branches
 (function loadBranchSelector() {
   fetch('branch_api.php?action=list').then(r=>r.json()).then(d=>{
     if (!d.ok) return;
-    const sel = document.getElementById('branch-select');
-    if (!sel) return;
-    d.branches.forEach(b => {
-      const opt = document.createElement('option');
-      opt.value = b.id;
-      opt.textContent = (b.is_active?'🏢 ':'🔴 ') + b.name;
-      opt.dataset.tenant = b.tenant_id || 1;
-      opt.style.background = '#2a1f14';
-      opt.style.color = '#fff';
-      sel.appendChild(opt);
+    const selectors = ['branch-select','branch-select-ops'].map(id=>document.getElementById(id)).filter(Boolean);
+    if(!selectors.length) return;
+    selectors.forEach(sel => {
+      while(sel.options.length > 1) sel.remove(1);
+      d.branches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = (b.is_active?'🏢 ':'🔴 ') + b.name;
+        opt.dataset.tenant = b.tenant_id || 1;
+        opt.style.background = '#2a1f14';
+        opt.style.color = '#fff';
+        sel.appendChild(opt);
+      });
     });
   }).catch(()=>{});
 })();
@@ -3109,6 +3120,7 @@ function switchBranch(id) {
   const opt = sel?.querySelector('option[value="'+id+'"]');
   window._currentTenant = parseInt(opt?.dataset?.tenant || 0);
   // Reload orders
+  ['branch-select','branch-select-ops'].forEach(sid=>{const s=document.getElementById(sid);if(s)s.value=id;});
   if(typeof loadOrders === 'function') loadOrders();
   if(typeof loadStats === 'function') loadStats();
   toast('🏢 ' + (currentBranchId ? (sel?.selectedOptions[0]?.textContent||'Branch') : 'All Branches'));
