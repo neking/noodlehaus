@@ -2663,6 +2663,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <!-- FOOTER APPEARANCE -->
     </div>
     </div>
+    </div><!-- /page-settings fix -->
     <!-- ── ORDERS PAGE ── -->
     <div id="page-orders" style="display:none">
       <div class="page-head">
