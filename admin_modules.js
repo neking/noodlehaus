@@ -1,3 +1,11 @@
+/* ─ Branch/Tenant context params ─ */
+function branchParams(extra){
+  const p=[];
+  if(window._currentBranch>0) p.push('branch_id='+window._currentBranch);
+  if(window._currentTenant>0) p.push('tenant_id='+window._currentTenant);
+  if(extra) p.push(extra);
+  return p.length?'&'+p.join('&'):'';
+}
 /* Shared helpers (needed before admin.php inline defines them) */
 if (typeof escHtml === 'undefined') {
   window.escHtml = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
