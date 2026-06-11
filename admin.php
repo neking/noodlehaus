@@ -1142,6 +1142,7 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     </div>
     <?php endif; ?>
     <nav>
+      <div class="nav-section-header" style="margin-top:.5rem">Business</div>
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
         <span class="nav-icon">📊</span> Dashboard
       </div>
