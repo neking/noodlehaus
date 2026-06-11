@@ -97,7 +97,105 @@ async function schedDetail(id){var st=prompt('Status: scheduled / confirmed / co
 /* ═══ SAAS DASHBOARD ═══ */
 async function saasLoad(){await saasLoadStats();await saasLoadTenants()}
 async function saasLoadStats(){try{const d=await(await fetch('tenant_api.php?action=stats')).json();if(!d.ok)return;const s=d.stats;document.getElementById('saas-stats').innerHTML=`<div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.5rem;font-weight:700">${s.total_tenants}</div><div style="font-size:.78rem;color:var(--text-muted)">🌐 Total Tenants</div></div><div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.5rem;font-weight:700;color:#27ae60">${s.paid_tenants}</div><div style="font-size:.78rem;color:var(--text-muted)">💰 Paid</div></div><div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.5rem;font-weight:700">${s.free_tenants}</div><div style="font-size:.78rem;color:var(--text-muted)">🆓 Free</div></div><div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.1rem;font-weight:700;color:#27ae60">${Number(s.total_revenue).toLocaleString()}</div><div style="font-size:.78rem;color:var(--text-muted)">💰 Total Revenue</div></div>`}catch(e){}}
-async function saasLoadTenants(){const tbody=document.getElementById('saas-tbody');try{const d=await(await fetch('tenant_api.php?action=list')).json();if(!d.ok)throw new Error(d.msg);if(!d.tenants.length){tbody.innerHTML='<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted)">No tenants</td></tr>';return}const pC={free:'var(--text-muted)',basic:'#3498db',pro:'#f39c12',enterprise:'#27ae60'};tbody.innerHTML=d.tenants.map(t=>{const a=parseInt(t.is_active);return`<tr style="border-bottom:1px solid var(--border);${!a?'opacity:.5':''}"><td style="padding:.7rem 1rem"><div style="font-weight:600">${escHtml(t.name)}</div><div style="font-size:.78rem;color:var(--text-muted)">${escHtml(t.slug)}</div></td><td style="padding:.7rem 1rem"><div>${escHtml(t.owner_name)}</div><div style="font-size:.78rem;color:var(--text-muted)">${escHtml(t.owner_email)}</div></td><td style="padding:.7rem 1rem;text-align:center"><span style="color:${pC[t.plan]};font-weight:600;text-transform:uppercase;font-size:.82rem">${t.plan}</span></td><td style="padding:.7rem 1rem;text-align:right;font-weight:600">${Number(t.total_orders||0).toLocaleString()}</td><td style="padding:.7rem 1rem;text-align:right">${Number(t.total_revenue||0).toLocaleString()}</td><td style="padding:.7rem 1rem;text-align:center"><span style="color:${a?'#27ae60':'#e74c3c'};font-size:.82rem;font-weight:600">${a?'✅':'❌'}</span></td><td style="padding:.7rem 1rem;text-align:center">${t.id>1?`<button class="btn btn-ghost btn-sm" onclick="saasToggle(${t.id})">${a?'Disable':'Enable'}</button> <button class="btn btn-ghost btn-sm" onclick="saasConfirmPayment(${t.id},'${escHtml(t.name)}')">💳 Pay</button> <button class="btn btn-ghost btn-sm" onclick="saasCopyLink('${escHtml(t.slug)}')" title="Copy ordering link">🔗</button>`:'<button class="btn btn-ghost btn-sm" onclick="saasCopyLink(\'main\')">🔗</button>' }</td></tr>`}).join('')}catch(e){tbody.innerHTML=`<tr><td colspan="7" style="padding:2rem;text-align:center;color:#e74c3c">${e.message}</td></tr>`}}
+let _saasTenants = [], _saasPage = 1;
+const _SAAS_PER = 5;
+
+async function saasLoadTenants(){
+  const tbody = document.getElementById('saas-tbody');
+  try {
+    const d = await (await fetch('tenant_api.php?action=list')).json();
+    if(!d.ok) throw new Error(d.msg);
+    _saasTenants = d.tenants || [];
+    saasRenderPage();
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="padding:2rem;text-align:center;color:#e74c3c">${e.message}</td></tr>`;
+  }
+}
+
+function saasRenderPage() {
+  const tbody = document.getElementById('saas-tbody');
+  const total = _saasTenants.length;
+  const pages = Math.ceil(total / _SAAS_PER);
+  _saasPage = Math.min(_saasPage, pages || 1);
+  const slice = _saasTenants.slice((_saasPage-1)*_SAAS_PER, _saasPage*_SAAS_PER);
+
+  if(!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="padding:2rem;text-align:center;color:var(--text-muted)">No tenants</td></tr>';
+    saasUpdatePager(0,0,0);
+    return;
+  }
+  const pC = {free:'var(--text-muted)',basic:'#3498db',pro:'#f39c12',enterprise:'#27ae60'};
+  const bC = {noodle_shop:'🍜',drinks:'🥤',bakery:'🍞',myanmar_food:'🍱',cafe:'☕',fast_food:'🍔',fine_dining:'🍽️',other:'🏪',restaurant:'🍱',demo:'🎮'};
+
+  tbody.innerHTML = slice.map(t => {
+    const a = parseInt(t.is_active);
+    const biz = bC[t.business_type] || '🏪';
+    return `<tr style="border-bottom:1px solid var(--border);${!a?'opacity:.5':''}">
+      <td style="padding:.7rem 1rem">
+        <div style="font-weight:600">${biz} ${escHtml(t.name)}</div>
+        <div style="font-size:.75rem;color:var(--text-muted)">${escHtml(t.slug)}</div>
+      </td>
+      <td style="padding:.7rem 1rem">
+        <div style="font-size:.85rem">${escHtml(t.owner_name)}</div>
+        <div style="font-size:.75rem;color:var(--text-muted)">${escHtml(t.owner_email)}</div>
+      </td>
+      <td style="padding:.7rem 1rem;text-align:center">
+        <span style="color:${pC[t.plan]||'#888'};font-weight:600;text-transform:uppercase;font-size:.78rem">${t.plan}</span>
+      </td>
+      <td style="padding:.7rem 1rem;text-align:right;font-weight:600">${Number(t.total_orders||0).toLocaleString()}</td>
+      <td style="padding:.7rem 1rem;text-align:right">${Number(t.total_revenue||0).toLocaleString()}</td>
+      <td style="padding:.7rem 1rem;text-align:center">
+        <span style="color:${a?'#27ae60':'#e74c3c'};font-size:.82rem;font-weight:600">${a?'✅':'❌'}</span>
+      </td>
+      <td style="padding:.7rem 1rem;text-align:center;white-space:nowrap;display:flex;gap:.3rem;justify-content:center">
+        ${t.id>1 ? `
+          <button class="btn btn-ghost btn-sm" onclick="saasToggle(${t.id})" title="${a?'Disable':'Enable'}">${a?'⏸':'▶'}</button>
+          <button class="btn btn-ghost btn-sm" onclick="saasConfirmPayment(${t.id},'${escHtml(t.name)}')" title="Payment">💳</button>
+          <button class="btn btn-ghost btn-sm" onclick="saasCopyLink('${escHtml(t.slug)}')" title="Copy Link">🔗</button>
+          <button class="btn btn-ghost btn-sm" onclick="saasDelete(${t.id},'${escHtml(t.name)}')" title="Delete" style="color:#e74c3c">🗑️</button>
+        ` : `<button class="btn btn-ghost btn-sm" onclick="saasCopyLink('main')">🔗</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  saasUpdatePager(_saasPage, pages, total);
+}
+
+function saasUpdatePager(page, pages, total) {
+  let pager = document.getElementById('saas-pager');
+  if(!pager) {
+    pager = document.createElement('div');
+    pager.id = 'saas-pager';
+    pager.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-top:1px solid var(--border);font-size:.82rem;color:var(--text-muted)';
+    const table = document.querySelector('#page-saas .card');
+    if(table) table.appendChild(pager);
+  }
+  pager.innerHTML = `
+    <span>Tenants ${total} ခု · Page ${page}/${pages||1}</span>
+    <div style="display:flex;gap:.4rem">
+      <button class="btn btn-ghost btn-sm" onclick="_saasPage=Math.max(1,_saasPage-1);saasRenderPage()" ${page<=1?'disabled':''}>← Prev</button>
+      <button class="btn btn-ghost btn-sm" onclick="_saasPage=Math.min(${pages},_saasPage+1);saasRenderPage()" ${page>=pages?'disabled':''}>Next →</button>
+    </div>`;
+}
+
+async function saasDelete(id, name) {
+  if(!confirm(`"${name}" ကို ဖျက်မည်လား?
+
+Soft delete ဖြစ်သည် — data မပျောက်ဘဲ inactive ဖြစ်မည်`)) return;
+  try {
+    const d = await (await fetch('tenant_api.php?action=delete', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({id})
+    })).json();
+    if(!d.ok) throw new Error(d.msg);
+    showToast('🗑️ Tenant deleted');
+    saasLoad();
+  } catch(e) {
+    showToast('❌ ' + e.message, true);
+  }
+}
+
 async function saasToggle(id){if(!confirm('Tenant status ပြောင်းမည်?'))return;try{const d=await(await fetch('tenant_api.php?action=toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();if(!d.ok)throw new Error(d.msg);showToast('✅ Updated');saasLoad()}catch(e){showToast('❌ '+e.message,true)}}
 
 /* ══ HEALTH CHECK WIDGET ══ */

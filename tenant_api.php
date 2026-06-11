@@ -197,3 +197,15 @@ if ($action === 'confirm_payment' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     ok(['message'=>"Payment confirmed. Plan upgraded to {$planCode} until {$periodEnd}"]);
 }
+
+// ── Delete Tenant ──────────────────────────────────────────────
+if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $d = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = (int)($d['id'] ?? 0);
+    if (!$id || $id === 1) fail('Cannot delete this tenant');
+    // Soft delete — keep data but mark deleted
+    $pdo->prepare("UPDATE tenants SET is_active=0, slug=CONCAT('deleted_',id,'_',slug), name=CONCAT('[Deleted] ',name) WHERE id=? AND id!=1")
+        ->execute([$id]);
+    // Clean up menu items + orders optional
+    ok(['message' => 'Tenant deleted']);
+}
