@@ -265,3 +265,84 @@ function saasCopyLink(slug) {
   });
 }
 /* ══ END SAAS BILLING ══ */
+
+/* ═══ BRANCH ANALYTICS ═══ */
+async function branchLoad() {
+  const wrap = document.getElementById('branch-analytics');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">Loading...</div>';
+  try {
+    const d = await (await fetch('reports_api.php?action=branches')).json();
+    if (!d.ok) throw new Error(d.msg);
+    const branches = d.branches || [];
+    const maxRev = Math.max(...branches.map(b => +b.revenue), 1);
+
+    wrap.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem">
+        ${branches.map(b => `
+          <div class="card" style="padding:1.2rem">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.8rem">
+              <div>
+                <div style="font-weight:700;font-size:1rem">${escHtml(b.name)}</div>
+                <div style="font-size:.75rem;color:var(--text-muted);font-family:monospace">${escHtml(b.code)}</div>
+              </div>
+              <span style="background:var(--surface2);border-radius:20px;padding:.2rem .7rem;font-size:.75rem;font-weight:600">
+                ${b.total_orders} orders
+              </span>
+            </div>
+            <div style="margin-bottom:.6rem">
+              <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.3rem">
+                <span style="color:var(--text-muted)">Revenue</span>
+                <span style="font-weight:700;color:var(--accent)">${Number(b.revenue).toLocaleString()} MMK</span>
+              </div>
+              <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+                <div style="height:100%;background:var(--accent);border-radius:4px;width:${Math.round(+b.revenue/maxRev*100)}%;transition:width .5s"></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.78rem">
+              <div style="background:var(--surface2);border-radius:6px;padding:.4rem .6rem">
+                <div style="color:var(--text-muted)">Avg Order</div>
+                <div style="font-weight:600">${Number(+b.avg_order).toLocaleString()}</div>
+              </div>
+              <div style="background:var(--surface2);border-radius:6px;padding:.4rem .6rem">
+                <div style="color:var(--text-muted)">Cancelled</div>
+                <div style="font-weight:600;color:${+b.cancelled > 0 ? '#e74c3c' : 'inherit'}">${b.cancelled}</div>
+              </div>
+            </div>
+            ${b.last_order ? `<div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem">Last order: ${b.last_order.slice(0,16)}</div>` : '<div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem">No orders yet</div>'}
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="card" style="overflow:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border)">
+              <th style="padding:.6rem 1rem;text-align:left;font-weight:600">Branch</th>
+              <th style="padding:.6rem 1rem;text-align:left;font-weight:600">Code</th>
+              <th style="padding:.6rem 1rem;text-align:right;font-weight:600">Orders</th>
+              <th style="padding:.6rem 1rem;text-align:right;font-weight:600">Revenue</th>
+              <th style="padding:.6rem 1rem;text-align:right;font-weight:600">Avg Order</th>
+              <th style="padding:.6rem 1rem;text-align:center;font-weight:600">Cancelled</th>
+              <th style="padding:.6rem 1rem;text-align:left;font-weight:600">Last Order</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${branches.map(b => `
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:.6rem 1rem;font-weight:600">${escHtml(b.name)}</td>
+                <td style="padding:.6rem 1rem;font-family:monospace;font-size:.78rem;color:var(--text-muted)">${escHtml(b.code)}</td>
+                <td style="padding:.6rem 1rem;text-align:right;font-weight:700">${b.total_orders}</td>
+                <td style="padding:.6rem 1rem;text-align:right;color:var(--accent);font-weight:700">${Number(b.revenue).toLocaleString()}</td>
+                <td style="padding:.6rem 1rem;text-align:right">${Number(+b.avg_order).toLocaleString()}</td>
+                <td style="padding:.6rem 1rem;text-align:center;color:${+b.cancelled>0?'#e74c3c':'var(--text-muted)'}">${b.cancelled}</td>
+                <td style="padding:.6rem 1rem;font-size:.8rem;color:var(--text-muted)">${b.last_order ? b.last_order.slice(0,16) : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:#e74c3c;padding:1rem">${e.message}</div>`;
+  }
+}

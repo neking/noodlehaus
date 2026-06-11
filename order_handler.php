@@ -112,16 +112,17 @@ try {
     if (!$isAppend) {
         $s = $pdo->prepare("
             INSERT INTO orders
-                (tenant_id,customer_name,customer_phone,delivery_address,township,city,
+                (tenant_id,branch_id,customer_name,customer_phone,delivery_address,township,city,
                  special_notes,payment_method,subtotal,delivery_fee,total_amount,
                  status,device_id,order_type,table_id,table_status,created_at)
             VALUES
-                (:tenant_id,:name,:phone,:address,:township,:city,
+                (:tenant_id,:branch_id,:name,:phone,:address,:township,:city,
                  :notes,:payment,:subtotal,:delivery_fee,:total,
                  'pending',:device_id,:order_type,:table_id,:table_status,NOW())
         ");
         $s->execute([
             ':tenant_id'    => tenantId(),
+            ':branch_id'    => (int)($data['branch_id'] ?? 1),
             ':name'         => sanitizeStr($customer['name']),
             ':phone'        => sanitizeStr($customer['phone']    ?? ''),
             ':address'      => sanitizeStr($customer['address']  ?? ''),

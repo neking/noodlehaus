@@ -1628,6 +1628,7 @@ async function submitOrder() {
 
   const payload = {
     device_id:  DEVICE_ID,
+    branch_id:  window._BRANCH_ID || 1,
     order_type: DINE_IN ? 'dine_in' : 'delivery',
     table_id:   DINE_IN ? TABLE_ID : '',
     customer: {

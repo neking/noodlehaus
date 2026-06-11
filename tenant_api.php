@@ -58,8 +58,8 @@ if ($action === 'signup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $tenantId = (int)$pdo->lastInsertId();
 
     // Auto-provision: create branch + admin staff
-    $pdo->prepare("INSERT INTO branches (name,code) VALUES (?,?)")
-        ->execute([$name, strtoupper($slug)]);
+    $pdo->prepare("INSERT INTO branches (tenant_id,name,code) VALUES (?,?,?)")
+        ->execute([$tenantId, $name, strtoupper($slug)]);
 
     // Create admin staff with PIN (first 4 digits of phone as default PIN)
     $pin = substr(preg_replace('/[^0-9]/', '', $phone), -4) ?: '0000';
@@ -158,12 +158,12 @@ if ($action === 'stats') {
 if ($action === 'resolve' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $slug = trim($_GET['slug'] ?? '');
     if (!$slug) fail('Slug required');
-    $row = $pdo->prepare("SELECT id, name, plan, is_active, business_type FROM tenants WHERE slug=? LIMIT 1");
+    $row = $pdo->prepare("SELECT t.id, t.name, t.plan, t.is_active, t.business_type, b.id as branch_id, b.code as branch_code FROM tenants t LEFT JOIN branches b ON b.tenant_id = t.id WHERE t.slug=? LIMIT 1");
     $row->execute([$slug]);
     $t = $row->fetch(PDO::FETCH_ASSOC);
     if (!$t) fail('Tenant not found', 404);
     if (!$t['is_active']) fail('Account suspended', 403);
-    ok(['tenant_id'=>(int)$t['id'], 'name'=>$t['name'], 'plan'=>$t['plan'], 'business_type'=>$t['business_type'] ?? 'restaurant']);
+    ok(['tenant_id'=>(int)$t['id'], 'name'=>$t['name'], 'plan'=>$t['plan'], 'business_type'=>$t['business_type'] ?? 'restaurant', 'branch_id'=>(int)($t['branch_id'] ?? 1), 'branch_code'=>$t['branch_code'] ?? 'MAIN']);
 }
 
 fail('Unknown action');
