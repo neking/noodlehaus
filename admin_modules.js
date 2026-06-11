@@ -363,8 +363,12 @@ async function switchBranch(branchId) {
   }
 
   // Reload current active page
-  const pageId = document.querySelector('.page[style*="block"],.page:not([style*="none"])')?.id?.replace('page-','') || '';
+  // Reload all relevant data — no page condition
+  if(typeof loadStats === 'function') loadStats();
   if(typeof loadOrders === 'function') loadOrders();
-  if(pageId === 'dashboard' && typeof loadStats === 'function') { loadStats(); loadOrders(); }
-  if(pageId === 'branches' && typeof branchLoad === 'function') branchLoad();
+  if(typeof loadAnalytics === 'function') loadAnalytics(7);
+  if(typeof branchLoad === 'function') {
+    const po = document.getElementById('page-branches');
+    if(po && getComputedStyle(po).display !== 'none') branchLoad();
+  }
 }
