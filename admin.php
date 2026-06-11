@@ -361,9 +361,12 @@ if (isset($_GET['api'])) { // GET+POST both handled
         $rows = db()->query("
             SELECT o.id, o.branch_id, o.tenant_id, o.customer_name, o.customer_phone, o.total_amount,
                    o.payment_method, o.status, o.created_at, o.delete_reason,
-                   COALESCE(GROUP_CONCAT(oi.item_name,'×',oi.qty SEPARATOR ', '),'—') AS items
+                   COALESCE(GROUP_CONCAT(oi.item_name,'×',oi.qty SEPARATOR ', '),'—') AS items,
+                   COALESCE(b.name,'—') AS branch_name,
+                   COALESCE(b.code,'—') AS branch_code
             FROM orders o
             LEFT JOIN order_items oi ON oi.order_id = o.id
+            LEFT JOIN branches b ON b.id = o.branch_id
             WHERE (o.deleted_at IS NULL OR o.status = 'cancelled')
             GROUP BY o.id ORDER BY o.id DESC LIMIT 200
         ")->fetchAll();
@@ -3676,8 +3679,9 @@ async function loadOrders() {
   const orderRow = (o, isDash) => {
     const ref  = 'NH-' + String(o.id).padStart(6,'0');
     const time = new Date(o.created_at).toLocaleString('en-GB',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'});
+    const branchBadge = (window._currentBranch > 0) ? '' : `<span style="display:inline-block;background:var(--surface2);color:var(--muted);font-size:.68rem;padding:.1rem .45rem;border-radius:10px;margin-left:.3rem;font-weight:600">${o.branch_code||''}</span>`;
     return `<tr>
-      <td><strong style="font-family:'DM Mono',monospace">${ref}</strong></td>
+      <td><strong style="font-family:'DM Mono',monospace">${ref}</strong>${branchBadge}</td>
       <td>${o.customer_name}</td>
       ${isDash ? '' : `<td class="hide-mobile" style="font-size:.8rem">${o.customer_phone}</td>`}
       <td style="font-size:.78rem;color:var(--muted);max-width:160px">${o.items}</td>
