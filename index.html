@@ -637,6 +637,7 @@ header{
 }
 </style>
 <script src="themes.js"></script>
+<script src="biz_layouts.js"></script>
 </head>
 <body>
 
@@ -1082,8 +1083,12 @@ window._applyThemeLoaded = true;
     } catch(e) {}
   }
   await loadMenu();
-  // If tenant slug was in URL, menu already loaded with correct tenant
-  // renderCats/renderMenu will use the correct menu array
+  // Apply business type layout if set
+  if (window._TENANT_BIZ && window._TENANT_BIZ !== 'noodle_shop' && window._TENANT_BIZ !== 'restaurant' && window._TENANT_BIZ !== 'demo' && window._TENANT_BIZ !== 'other') {
+    if (typeof window.applyBizLayout === 'function') {
+      window.applyBizLayout(window._TENANT_BIZ, menu || []);
+    }
+  }
   renderCats();
   renderMenu();
   // Reload menu for tenant after full init
@@ -1118,7 +1123,7 @@ async function loadMenu() {
     const r = await fetch('menu_api.php?tenant_id=' + tid);
     const d = await r.json();
     if (!d.ok) return;
-    menu = d.items || [];
+    menu = d.items || []; window.menu = menu;
     cats = ['All', ...new Set(menu.map(i => i.cat || i.category))];
     if (d.settings) settings = {...settings, ...Object.fromEntries(
       Object.entries(d.settings).filter(([,v]) => v !== null && v !== '')
@@ -1170,6 +1175,10 @@ function renderMenu() {
       </div>
     </div>`;
   }).join('');
+  // Apply biz layout after normal render
+  if (window._TENANT_BIZ && window._TENANT_BIZ !== 'noodle_shop' && window._TENANT_BIZ !== 'restaurant' && typeof window.applyBizLayout === 'function') {
+    window.applyBizLayout(window._TENANT_BIZ, menu);
+  }
 }
 
 /* ═══════════════════════════════════════

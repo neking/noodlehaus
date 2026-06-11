@@ -158,12 +158,12 @@ if ($action === 'stats') {
 if ($action === 'resolve' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $slug = trim($_GET['slug'] ?? '');
     if (!$slug) fail('Slug required');
-    $row = $pdo->prepare("SELECT id, name, plan, is_active FROM tenants WHERE slug=? LIMIT 1");
+    $row = $pdo->prepare("SELECT id, name, plan, is_active, business_type FROM tenants WHERE slug=? LIMIT 1");
     $row->execute([$slug]);
     $t = $row->fetch(PDO::FETCH_ASSOC);
     if (!$t) fail('Tenant not found', 404);
     if (!$t['is_active']) fail('Account suspended', 403);
-    ok(['tenant_id'=>(int)$t['id'], 'name'=>$t['name'], 'plan'=>$t['plan']]);
+    ok(['tenant_id'=>(int)$t['id'], 'name'=>$t['name'], 'plan'=>$t['plan'], 'business_type'=>$t['business_type'] ?? 'restaurant']);
 }
 
 fail('Unknown action');
