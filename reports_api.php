@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/db_connect.php';
 $pdo = getPDO();
+if(session_status()===PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
