@@ -741,11 +741,33 @@ if (isset($_GET['api'])) { // GET+POST both handled
     /* dashboard stats */
     if ($_GET['api'] === 'stats') {
         $pdo = db();
-        $today     = $pdo->query("SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE() AND deleted_at IS NULL AND status != 'cancelled'")->fetchColumn();
-        $revenue   = $pdo->query("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE DATE(created_at)=CURDATE() AND deleted_at IS NULL AND status != 'cancelled'")->fetchColumn();
-        $lowstock  = $pdo->query("SELECT COUNT(*) FROM menu_items WHERE stock_qty<=5 AND is_active=1")->fetchColumn();
-        $pending   = $pdo->query("SELECT COUNT(*) FROM kds_queue WHERE status='pending'")->fetchColumn();
-        echo json_encode(['ok'=>true,'today'=>$today,'revenue'=>$revenue,'low'=>$lowstock,'pending'=>$pending]);
+        $bid = (int)($_GET['branch_id'] ?? 0);
+        $tid = (int)($_GET['tenant_id'] ?? 0);
+
+        // Build WHERE clause for branch/tenant filter
+        $where = "deleted_at IS NULL AND status != 'cancelled'";
+        $params = [];
+        if ($bid > 0) { $where .= " AND branch_id = ?"; $params[] = $bid; }
+        if ($tid > 0) { $where .= " AND tenant_id = ?"; $params[] = $tid; }
+
+        $s = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE() AND $where");
+        $s->execute($params);
+        $today = $s->fetchColumn();
+
+        $s2 = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE DATE(created_at)=CURDATE() AND $where");
+        $s2->execute($params);
+        $revenue = $s2->fetchColumn();
+
+        // Stock + KDS — always global (not branch-specific)
+        $lowstock = $pdo->query("SELECT COUNT(*) FROM menu_items WHERE stock_qty<=5 AND is_active=1")->fetchColumn();
+        $pending  = $pdo->query("SELECT COUNT(*) FROM kds_queue WHERE status='pending'")->fetchColumn();
+
+        // Pending orders for this branch
+        $pendingWhere = "status='pending'";
+        if ($bid > 0) { $pendingWhere .= " AND branch_id=$bid"; }
+        $pending = $pdo->query("SELECT COUNT(*) FROM orders WHERE $pendingWhere AND deleted_at IS NULL")->fetchColumn();
+
+        echo json_encode(['ok'=>true,'today'=>$today,'revenue'=>$revenue,'low'=>$lowstock,'pending'=>$pending,'branch_id'=>$bid]);
         exit;
     }
 
@@ -3586,7 +3608,10 @@ async function loadAnalytics(days=7){
     const b=document.getElementById('abtn-'+d);
     if(b){b.style.background=d===days?'var(--accent)':'';b.style.color=d===days?'#fff':'';}
   });
-  const r=await fetch('analytics.php?days='+days);
+  let aUrl='analytics.php?days='+days;
+  if(window._currentBranch>0) aUrl+='&branch_id='+window._currentBranch;
+  if(window._currentTenant>0) aUrl+='&tenant_id='+window._currentTenant;
+  const r=await fetch(aUrl);
   const d=await r.json();
   if(!d.ok)return;
 
