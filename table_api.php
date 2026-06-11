@@ -14,6 +14,19 @@ require_once __DIR__ . '/db_connect.php';
 $pdo = getPDO();
 
 session_start();
+
+// ── Branch/Tenant context from request ──────────────────────────────
+$_REQ_BRANCH = (int)($_GET['branch_id'] ?? $_POST['branch_id'] ?? 0);
+$_REQ_TENANT = (int)($_GET['tenant_id'] ?? $_POST['tenant_id'] ?? $_SESSION['tenant_id'] ?? 1);
+function branchWhere(string $alias='o'): string {
+    global $_REQ_BRANCH, $_REQ_TENANT;
+    $w = [];
+    if($_REQ_BRANCH > 0) $w[] = "$alias.branch_id = $_REQ_BRANCH";
+    if($_REQ_TENANT > 0) $w[] = "$alias.tenant_id = $_REQ_TENANT";
+    return $w ? ' AND '.implode(' AND ',$w) : '';
+}
+// ─────────────────────────────────────────────────────────────────────
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
