@@ -636,6 +636,7 @@ header{
   .mod-sheet-foot{padding:.7rem 1rem;}
 }
 </style>
+<script src="themes.js"></script>
 </head>
 <body>
 
@@ -1018,6 +1019,8 @@ window.BIZ_THEMES = {
 window.BIZ_THEMES.restaurant = window.BIZ_THEMES.myanmar_food;
 window.BIZ_THEMES.demo = window.BIZ_THEMES.noodle_shop;
 window._debug1 = true;
+// THEME_CSS loaded from themes.js
+
 window.applyTheme = function(bizType) {
   const t = window.BIZ_THEMES[bizType] || window.BIZ_THEMES.noodle_shop;
   const r = document.documentElement.style;
@@ -1053,6 +1056,12 @@ window.applyTheme = function(bizType) {
     if (spans.length === 0) logoEl.textContent = t.hero.emoji + ' ' + (window._TENANT_NAME || 'NoodleHaus');
   }
   window._BIZ_THEME = t;
+  // Inject theme CSS
+  let styleEl = document.getElementById('theme-style');
+  if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'theme-style'; document.head.appendChild(styleEl); }
+  styleEl.textContent = window.THEME_CSS[bizType] || window.THEME_CSS.noodle_shop || '';
+  // Set body theme class
+  document.body.className = 'theme-' + bizType;
 }
 window._applyThemeLoaded = true;
 
