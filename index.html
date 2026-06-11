@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>NoodleHaus — Online Order</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&family=DM+Mono&family=Noto+Sans+Myanmar&family=Noto+Sans+SC&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&family=Fredoka+One&family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Pacifico&family=DM+Mono&family=Noto+Sans+Myanmar&family=Noto+Sans+SC&display=swap" rel="stylesheet">
 <style>
 /* ── RESET & TOKENS ── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -16,6 +16,10 @@ html{font-size:16px;-webkit-text-size-adjust:100%;text-size-adjust:100%}
   --accent:#e84c2b;--accent2:#f0a500;--muted:#8a7a6a;
   --card:#fff;--radius:14px;--shadow:0 2px 12px rgba(26,18,9,.1);
   font-family:'DM Sans','Noto Sans Myanmar','Noto Sans SC',sans-serif;
+}
+/* ── THEME TRANSITIONS ── */
+body,header,.hero,.cat-pill,.add-btn,.btn-primary,.menu-card{
+  transition:background .4s,color .4s,border-color .4s;
 }
 body{background:var(--paper);color:var(--ink);min-height:100vh;padding-bottom:80px}
 
@@ -928,6 +932,130 @@ const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:
 /* ═══════════════════════════════════════
    INIT
 ═══════════════════════════════════════ */
+// ── BUSINESS TYPE THEMES ──────────────────────────────────────
+window.BIZ_THEMES = {
+  noodle_shop: {
+    ink:'#1a1209', paper:'#faf7f2', warm:'#f5ede0', border:'#e2d5c3',
+    accent:'#e84c2b', accent2:'#f0a500', muted:'#8a7a6a', card:'#fff',
+    headerBg:'#1a1209', headerText:'#faf7f2',
+    font:"'DM Sans','Noto Sans Myanmar',sans-serif",
+    titleFont:"'Playfair Display',serif",
+    hero:{title:'Freshly Made Noodles', sub:'ခေါက်ဆွဲ · Soups · Sides', emoji:'🍜', bg:'#1a1209'},
+    cats:['All','Noodles','Soups','Sides','Drinks'],
+    gradient:'linear-gradient(135deg,#e84c2b22,#f0a50022)',
+  },
+  drinks: {
+    ink:'#0a2540', paper:'#f0f9ff', warm:'#e0f2fe', border:'#bae6fd',
+    accent:'#0ea5e9', accent2:'#06b6d4', muted:'#4a7a9b', card:'#fff',
+    headerBg:'#0ea5e9', headerText:'#fff',
+    font:"'DM Sans',sans-serif",
+    titleFont:"'Fredoka One',cursive",
+    hero:{title:'Refresh Your Day', sub:'Cold · Fresh · Delicious', emoji:'🥤', bg:'#0a2540'},
+    cats:['All','Cold Drinks','Hot Drinks','Smoothies','Snacks'],
+    gradient:'linear-gradient(135deg,#0ea5e922,#06b6d422)',
+  },
+  bakery: {
+    ink:'#2c1a0e', paper:'#fdf8f3', warm:'#fef3e2', border:'#f0d9b5',
+    accent:'#c4763c', accent2:'#e8a45a', muted:'#7a5c3a', card:'#fffcf7',
+    headerBg:'#2c1a0e', headerText:'#fdf8f3',
+    font:"'DM Sans',sans-serif",
+    titleFont:"'Pacifico',cursive",
+    hero:{title:'Freshly Baked Daily', sub:'Breads · Cakes · Pastries', emoji:'🍞', bg:'#2c1a0e'},
+    cats:['All','Breads','Cakes','Pastries','Hot Drinks'],
+    gradient:'linear-gradient(135deg,#c4763c22,#e8a45a22)',
+  },
+  myanmar_food: {
+    ink:'#1a2a1a', paper:'#f5f8f0', warm:'#e8f5e9', border:'#c8e6c9',
+    accent:'#2e7d32', accent2:'#d4a017', muted:'#4a6a4a', card:'#fff',
+    headerBg:'#1a2a1a', headerText:'#f5f8f0',
+    font:"'DM Sans','Noto Sans Myanmar',sans-serif",
+    titleFont:"'Playfair Display',serif",
+    hero:{title:'မြန်မာ့အရသာ', sub:'Rice · Curry · Salads · Soups', emoji:'🍱', bg:'#1a2a1a'},
+    cats:['All','Rice & Curry','Salads','Noodles','Soups','Drinks'],
+    gradient:'linear-gradient(135deg,#2e7d3222,#d4a01722)',
+  },
+  cafe: {
+    ink:'#1c0f08', paper:'#faf6f2', warm:'#f5ece3', border:'#e0cbb8',
+    accent:'#6b3a2a', accent2:'#c4a882', muted:'#7a5c4a', card:'#fffaf7',
+    headerBg:'#1c0f08', headerText:'#faf6f2',
+    font:"'DM Sans',sans-serif",
+    titleFont:"'Cormorant Garamond',serif",
+    hero:{title:'Your Daily Ritual', sub:'Coffee · Tea · Food · Pastries', emoji:'☕', bg:'#1c0f08'},
+    cats:['All','Coffee','Tea','Food','Pastries','Cold Drinks'],
+    gradient:'linear-gradient(135deg,#6b3a2a22,#c4a88222)',
+  },
+  fast_food: {
+    ink:'#1a0500', paper:'#fffbf5', warm:'#fff3e0', border:'#ffd180',
+    accent:'#ff3d00', accent2:'#ffc107', muted:'#7a4a2a', card:'#fff',
+    headerBg:'#ff3d00', headerText:'#fff',
+    font:"'Fredoka One',cursive",
+    titleFont:"'Fredoka One',cursive",
+    hero:{title:'Fast. Fresh. Fire.', sub:'Burgers · Chicken · Fries · Drinks', emoji:'🍔', bg:'#1a0500'},
+    cats:['All','Burgers','Chicken','Fries & Sides','Drinks','Combos'],
+    gradient:'linear-gradient(135deg,#ff3d0022,#ffc10722)',
+  },
+  fine_dining: {
+    ink:'#0d0d1a', paper:'#fafaf8', warm:'#f5f0e8', border:'#d4c5a3',
+    accent:'#c9a84c', accent2:'#e8d5a3', muted:'#7a6a5a', card:'#fff',
+    headerBg:'#0d0d1a', headerText:'#fafaf8',
+    font:"'DM Sans',sans-serif",
+    titleFont:"'Cormorant Garamond',serif",
+    hero:{title:'An Unforgettable Experience', sub:'Starters · Mains · Desserts', emoji:'🍽️', bg:'#0d0d1a'},
+    cats:['All','Starters','Mains','Desserts','Beverages'],
+    gradient:'linear-gradient(135deg,#c9a84c22,#e8d5a322)',
+  },
+  other: {
+    ink:'#0d2626', paper:'#f5fafa', warm:'#e6f7f7', border:'#b2dfdb',
+    accent:'#0d9488', accent2:'#5eead4', muted:'#4a7a7a', card:'#fff',
+    headerBg:'#0d2626', headerText:'#f5fafa',
+    font:"'DM Sans',sans-serif",
+    titleFont:"'DM Sans',sans-serif",
+    hero:{title:'Welcome', sub:'Order Here · Fresh & Fast', emoji:'🏪', bg:'#0d2626'},
+    cats:['All','Food','Drinks','Specials'],
+    gradient:'linear-gradient(135deg,#0d948822,#5eead422)',
+  },
+};
+window.BIZ_THEMES.restaurant = window.BIZ_THEMES.myanmar_food;
+window.BIZ_THEMES.demo = window.BIZ_THEMES.noodle_shop;
+window._debug1 = true;
+window.applyTheme = function(bizType) {
+  const t = window.BIZ_THEMES[bizType] || window.BIZ_THEMES.noodle_shop;
+  const r = document.documentElement.style;
+  r.setProperty('--ink',    t.ink);
+  r.setProperty('--paper',  t.paper);
+  r.setProperty('--warm',   t.warm);
+  r.setProperty('--border', t.border);
+  r.setProperty('--accent', t.accent);
+  r.setProperty('--accent2',t.accent2);
+  r.setProperty('--muted',  t.muted);
+  r.setProperty('--card',   t.card);
+  // Header
+  const hdr = document.querySelector('header');
+  if (hdr) { hdr.style.background=t.headerBg; hdr.style.color=t.headerText; }
+  // Body
+  document.body.style.background = t.paper;
+  document.body.style.fontFamily = t.font;
+  // Hero gradient overlay
+  const heroBg = document.getElementById('hero-bg-img');
+  if (heroBg) heroBg.style.background = t.gradient;
+  // Hero text
+  const heroTitle = document.getElementById('hero-title');
+  if (heroTitle) {
+    heroTitle.style.fontFamily = t.titleFont;
+    heroTitle.innerHTML = t.hero.emoji + ' ' + t.hero.title;
+  }
+  const heroSub = document.getElementById('hero-subtitle');
+  if (heroSub) heroSub.textContent = t.hero.sub;
+  // Page title emoji
+  const logoEl = document.querySelector('.logo');
+  if (logoEl && t.hero.emoji) {
+    const spans = logoEl.querySelectorAll('span');
+    if (spans.length === 0) logoEl.textContent = t.hero.emoji + ' ' + (window._TENANT_NAME || 'NoodleHaus');
+  }
+  window._BIZ_THEME = t;
+}
+window._applyThemeLoaded = true;
+
 (async () => {
   loadCart();
   // ── Tenant detection ──
@@ -938,7 +1066,9 @@ const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:
       if (_td.ok) {
         window._TENANT_ID = _td.tenant_id;
         window._TENANT_NAME = _td.name;
+        window._TENANT_BIZ  = _td.business_type || 'restaurant';
         document.title = _td.name + ' — Online Order';
+        applyTheme(window._TENANT_BIZ);
       }
     } catch(e) {}
   }

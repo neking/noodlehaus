@@ -1,4 +1,4 @@
-const CACHE_NAME = 'noodlehaus-v20260610';
+const CACHE_NAME = 'noodlehaus-v1781149114';
 const STATIC_CACHE = 'noodlehaus-static-v20260610';
 const QUEUE_DB = 'noodlehaus-queue';
 

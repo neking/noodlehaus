@@ -35,6 +35,7 @@ if ($action === 'signup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone = trim($d['owner_phone'] ?? '');
     $plan  = trim($d['plan'] ?? 'free');
     $pass  = trim($d['password'] ?? '');
+    $bizType = in_array(trim($d['business_type'] ?? ''), ['noodle_shop','drinks','bakery','myanmar_food','cafe','fast_food','fine_dining','other','restaurant','demo']) ? trim($d['business_type']) : 'restaurant';
 
     if (!$name || !$slug || !$owner || !$email || !$phone) fail('All fields required');
     if (strlen($slug) < 3) fail('Slug must be 3+ characters');
@@ -52,8 +53,8 @@ if ($action === 'signup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$p) $p = ['max_branches'=>1,'max_staff'=>3,'max_menu_items'=>20];
 
     // Create tenant
-    $pdo->prepare("INSERT INTO tenants (name,slug,owner_name,owner_email,owner_phone,plan,max_branches,max_staff,max_menu_items) VALUES (?,?,?,?,?,?,?,?,?)")
-        ->execute([$name,$slug,$owner,$email,$phone,$plan,(int)$p['max_branches'],(int)$p['max_staff'],(int)$p['max_menu_items']]);
+    $pdo->prepare("INSERT INTO tenants (name,slug,owner_name,owner_email,owner_phone,plan,max_branches,max_staff,max_menu_items,business_type) VALUES (?,?,?,?,?,?,?,?,?,?)")
+        ->execute([$name,$slug,$owner,$email,$phone,$plan,(int)$p['max_branches'],(int)$p['max_staff'],(int)$p['max_menu_items'],$bizType]);
     $tenantId = (int)$pdo->lastInsertId();
 
     // Auto-provision: create branch + admin staff
