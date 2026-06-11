@@ -363,8 +363,8 @@ async function switchBranch(branchId) {
   }
 
   // Reload current active page
-  // Reload all relevant data — no page condition
-  if(typeof loadStats === 'function') loadStats();
+  // Reload all relevant data — await to ensure sequential update
+  if(typeof loadStats === 'function') await loadStats();
   if(typeof loadOrders === 'function') loadOrders();
   if(typeof loadAnalytics === 'function') loadAnalytics(7);
   if(typeof branchLoad === 'function') {
