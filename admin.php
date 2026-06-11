@@ -366,7 +366,7 @@ if (isset($_GET['api'])) { // GET+POST both handled
             LEFT JOIN order_items oi ON oi.order_id = o.id
             WHERE (o.deleted_at IS NULL OR o.status = 'cancelled')
             GROUP BY o.id ORDER BY o.id DESC LIMIT 200
-        ");
+        ")->fetchAll();
         $bid = (int)($_GET['branch_id'] ?? 0);
         $tid = (int)($_GET['tenant_id'] ?? 0);
         if($bid > 0) $rows = array_values(array_filter($rows, fn($r) => (int)$r['branch_id'] === $bid));
