@@ -811,7 +811,7 @@ nav{flex:1;padding:.8rem 0;}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
 .nav-item.active{background:rgba(255,255,255,.1);color:#fff;border-left-color:var(--accent2);}
 .nav-icon{font-size:1rem;width:20px;text-align:center;}
-.nav-section-header{padding:.7rem 1rem .2rem;font-size:.59rem;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.38);text-transform:uppercase;user-select:none;}
+.nav-section-header{padding:.75rem 1rem .2rem;font-size:.59rem;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.38);text-transform:uppercase;user-select:none;}
 .nav-section-divider{height:1px;background:rgba(255,255,255,.09);margin:.4rem .8rem .3rem;}
 #branch-ops-selector{padding:.25rem .7rem .45rem;}
 #branch-ops-selector select{width:100%;padding:.32rem .55rem;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;font-size:.76rem;cursor:pointer;outline:none;}
@@ -1147,72 +1147,87 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
     </div>
     <?php endif; ?>
     <nav>
-      <div class="nav-section-header" style="margin-top:.5rem">Business</div>
-      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
-        <span class="nav-icon">📊</span> Dashboard
+      <!-- ── BUSINESS ── -->
+      <div class="nav-section-header" onclick="toggleNavSection('business')">
+        Business <span class="nav-chev" id="chev-business">▾</span>
       </div>
-      <div class="nav-item" onclick="showPage('menu')" id="nav-menu">
-        <span class="nav-icon">🍜</span> Menu Items
+      <div class="nav-section-body" id="section-business">
+        <div class="nav-item" onclick="showPage('dashboard')" id="nav-dashboard">
+          <span class="nav-icon">📊</span> Dashboard
+        </div>
+        <div class="nav-item" onclick="showPage('menu')" id="nav-menu">
+          <span class="nav-icon">🍜</span> Menu Items
+        </div>
       </div>
+      <!-- ── BRANCH OPS ── -->
       <div class="nav-section-divider"></div>
-      <div class="nav-section-header">Branch Ops</div>
-      <div id="branch-ops-selector">
-        <select id="branch-select-ops" onchange="switchBranch(this.value)">
-          <option value="0">🏢 All Branches</option>
-        </select>
+      <div class="nav-section-header" onclick="toggleNavSection('branch-ops')">
+        Branch Ops <span class="nav-chev" id="chev-branch-ops">▾</span>
       </div>
-      <div class="nav-item" onclick="showPage('orders')" id="nav-orders">
-        <span class="nav-icon">📋</span> Orders
+      <div class="nav-section-body" id="section-branch-ops">
+        <div id="branch-ops-selector">
+          <select id="branch-select-ops" onchange="switchBranch(this.value)">
+            <option value="0">🏢 All Branches</option>
+          </select>
+        </div>
+        <div class="nav-item" onclick="showPage('orders')" id="nav-orders">
+          <span class="nav-icon">📋</span> Orders
+        </div>
+        <div class="nav-item" onclick="window.open('kds.html','_blank')" id="nav-kds">
+          <span class="nav-icon">🍳</span> KDS
+        </div>
+        <div class="nav-item" onclick="showPage('tables')" id="nav-tables">
+          <span class="nav-icon">🍽️</span> Tables
+        </div>
+        <div class="nav-item" onclick="showPage('reserve')" id="nav-reserve">
+          <span class="nav-icon">📅</span> Reservations
+        </div>
+        <div class="nav-item" onclick="showPage('stock')" id="nav-stock">
+          <span class="nav-icon">📦</span> Stock
+        </div>
+        <div class="nav-item" onclick="showPage('stocklog')" id="nav-stocklog">
+          <span class="nav-icon">📋</span> Stock Log
+        </div>
+        <div class="nav-item" onclick="showPage('crm')" id="nav-crm">
+          <span class="nav-icon">👥</span> CRM
+        </div>
+        <div class="nav-item" onclick="showPage('shift')" id="nav-shift">
+          <span class="nav-icon">🕐</span> Shifts
+        </div>
+        <div class="nav-item" onclick="showPage('delivery')" id="nav-delivery">
+          <span class="nav-icon">🛵</span> Delivery
+        </div>
+        <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
+          <span class="nav-icon">🏢</span> Branches
+        </div>
       </div>
-      <div class="nav-item" onclick="window.open('kds.html','_blank')" id="nav-kds">
-        <span class="nav-icon">🍳</span> KDS
-      </div>
-      <div class="nav-item" onclick="showPage('tables')" id="nav-tables">
-        <span class="nav-icon">🍽️</span> Tables
-      </div>
-      <div class="nav-item" onclick="showPage('reserve')" id="nav-reserve">
-        <span class="nav-icon">📅</span> Reservations
-      </div>
-      <div class="nav-item" onclick="showPage('stock')" id="nav-stock">
-        <span class="nav-icon">📦</span> Stock
-      </div>
-      <div class="nav-item" onclick="showPage('stocklog')" id="nav-stocklog">
-        <span class="nav-icon">📋</span> Stock Log
-      </div>
-      <div class="nav-item" onclick="showPage('crm')" id="nav-crm">
-        <span class="nav-icon">👥</span> CRM
-      </div>
-      <div class="nav-item" onclick="showPage('shift')" id="nav-shift">
-        <span class="nav-icon">🕐</span> Shifts
-      </div>
-      <div class="nav-item" onclick="showPage('delivery')" id="nav-delivery">
-        <span class="nav-icon">🛵</span> Delivery
-      </div>
-      <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
-        <span class="nav-icon">🏢</span> Branches
-      </div>
+      <!-- ── ADMIN ── -->
       <div class="nav-section-divider"></div>
-      <div class="nav-section-header">Admin</div>
-      <div class="nav-item" onclick="showPage('saas')" id="nav-saas">
-        <span class="nav-icon">🌐</span> SaaS
+      <div class="nav-section-header" onclick="toggleNavSection('admin')">
+        Admin <span class="nav-chev" id="chev-admin">›</span>
       </div>
-      <div class="nav-item" onclick="showPage('promos')" id="nav-promos">
-        <span class="nav-icon">🏷️</span> Promotions
-      </div>
-      <div class="nav-item" onclick="showPage('expenses')" id="nav-expenses">
-        <span class="nav-icon">💰</span> Expenses
-      </div>
-      <div class="nav-item" onclick="showPage('schedule')" id="nav-schedule">
-        <span class="nav-icon">📅</span> Scheduling
-      </div>
-      <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
-        <span class="nav-icon">👥</span> Staff
-      </div>
-      <div class="nav-item" onclick="showPage('storefront')" id="nav-storefront">
-        <span class="nav-icon">🎨</span> Storefront
-      </div>
-      <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
-        <span class="nav-icon">⚙️</span> Settings
+      <div class="nav-section-body" id="section-admin" style="display:none">
+        <div class="nav-item" onclick="showPage('saas')" id="nav-saas">
+          <span class="nav-icon">🌐</span> SaaS
+        </div>
+        <div class="nav-item" onclick="showPage('promos')" id="nav-promos">
+          <span class="nav-icon">🏷️</span> Promotions
+        </div>
+        <div class="nav-item" onclick="showPage('expenses')" id="nav-expenses">
+          <span class="nav-icon">💰</span> Expenses
+        </div>
+        <div class="nav-item" onclick="showPage('schedule')" id="nav-schedule">
+          <span class="nav-icon">📅</span> Scheduling
+        </div>
+        <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
+          <span class="nav-icon">👥</span> Staff
+        </div>
+        <div class="nav-item" onclick="showPage('storefront')" id="nav-storefront">
+          <span class="nav-icon">🎨</span> Storefront
+        </div>
+        <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
+          <span class="nav-icon">⚙️</span> Settings
+        </div>
       </div>
     </nav>
     <div class="sidebar-foot">
@@ -3119,6 +3134,16 @@ let currentBranchId = 0; // 0 = all branches
     });
   }).catch(()=>{});
 })();
+
+function toggleNavSection(id) {
+  const body = document.getElementById('section-' + id);
+  const chev = document.getElementById('chev-' + id);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  if (chev) chev.textContent = isOpen ? '›' : '▾';
+}
+
 function switchBranch(id) {
   currentBranchId = parseInt(id) || 0;
   window._currentBranch = currentBranchId;
