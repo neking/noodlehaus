@@ -346,3 +346,25 @@ async function branchAnalyticsLoad() {
     wrap.innerHTML = `<div style="color:#e74c3c;padding:1rem">${e.message}</div>`;
   }
 }
+
+/* ═══ BRANCH SWITCHER ═══ */
+window._currentBranch = 0; // 0 = All
+
+async function switchBranch(branchId) {
+  window._currentBranch = parseInt(branchId) || 0;
+  window._currentTenant = 0;
+
+  // Look up tenant_id from branch select options
+  const sel = document.getElementById('branch-select');
+  if(sel) {
+    const opt = sel.querySelector('option[value="'+branchId+'"]');
+    if(opt && opt.dataset.tenant) window._currentTenant = parseInt(opt.dataset.tenant);
+    sel.style.fontWeight = branchId > 0 ? '700' : '400';
+  }
+
+  // Reload current active page
+  const pageId = document.querySelector('.page[style*="block"],.page:not([style*="none"])')?.id?.replace('page-','') || '';
+  if(typeof loadOrders === 'function') loadOrders();
+  if(pageId === 'dashboard' && typeof loadStats === 'function') { loadStats(); loadOrders(); }
+  if(pageId === 'branches' && typeof branchLoad === 'function') branchLoad();
+}

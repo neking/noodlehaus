@@ -359,13 +359,20 @@ if (isset($_GET['api'])) { // GET+POST both handled
     /* orders list — deleted_at IS NULL သာ ပြ */
     if ($_GET['api'] === 'orders') {
         $rows = db()->query("
-            SELECT o.id, o.customer_name, o.customer_phone, o.total_amount,
+            SELECT o.id, o.branch_id, o.tenant_id, o.customer_name, o.customer_phone, o.total_amount,
                    o.payment_method, o.status, o.created_at, o.delete_reason,
-                   GROUP_CONCAT(oi.item_name,'×',oi.qty SEPARATOR ', ') AS items
+                   COALESCE(GROUP_CONCAT(oi.item_name,'×',oi.qty SEPARATOR ', '),'—') AS items
             FROM orders o
-            JOIN order_items oi ON oi.order_id = o.id
-            WHERE o.deleted_at IS NULL OR o.status = 'cancelled'
-            GROUP BY o.id ORDER BY o.id DESC LIMIT 100
+            LEFT JOIN order_items oi ON oi.order_id = o.id
+            WHERE (o.deleted_at IS NULL OR o.status = 'cancelled')
+            GROUP BY o.id ORDER BY o.id DESC LIMIT 200
+        ");
+        $bid = (int)($_GET['branch_id'] ?? 0);
+        $tid = (int)($_GET['tenant_id'] ?? 0);
+        if($bid > 0) $rows = array_values(array_filter($rows, fn($r) => (int)$r['branch_id'] === $bid));
+        if($tid > 0) $rows = array_values(array_filter($rows, fn($r) => (int)$r['tenant_id'] === $tid));
+        echo json_encode(['ok'=>true,'orders'=>$rows]); exit;
+    } if(false
         ")->fetchAll();
         echo json_encode(['ok'=>true,'orders'=>$rows]);
         exit;
@@ -3064,7 +3071,8 @@ let currentBranchId = 0; // 0 = all branches
     d.branches.forEach(b => {
       const opt = document.createElement('option');
       opt.value = b.id;
-      opt.textContent = '🏢 ' + b.name + (b.is_active?'':' (inactive)');
+      opt.textContent = (b.is_active?'🏢 ':'🔴 ') + b.name;
+      opt.dataset.tenant = b.tenant_id || 1;
       opt.style.background = '#2a1f14';
       opt.style.color = '#fff';
       sel.appendChild(opt);
@@ -3073,7 +3081,15 @@ let currentBranchId = 0; // 0 = all branches
 })();
 function switchBranch(id) {
   currentBranchId = parseInt(id) || 0;
-  toast('🏢 Branch: ' + (currentBranchId ? document.getElementById('branch-select').selectedOptions[0].textContent : 'All'));
+  window._currentBranch = currentBranchId;
+  // Get tenant_id from option data
+  const sel = document.getElementById('branch-select');
+  const opt = sel?.querySelector('option[value="'+id+'"]');
+  window._currentTenant = parseInt(opt?.dataset?.tenant || 0);
+  // Reload orders
+  if(typeof loadOrders === 'function') loadOrders();
+  if(typeof loadStats === 'function') loadStats();
+  toast('🏢 ' + (currentBranchId ? (sel?.selectedOptions[0]?.textContent||'Branch') : 'All Branches'));
 }
 
 // ── KPay QR Upload ──────────────────────────────
@@ -3148,7 +3164,11 @@ async function api(action, body = null) {
   const opts = { method: body ? 'POST' : 'GET', headers: {} };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   try {
-    const r = await fetch('admin.php?api=' + action, opts);
+    // Append branch/tenant filter if selected
+  let apiUrl = 'admin.php?api=' + action;
+  if(window._currentBranch > 0) apiUrl += '&branch_id=' + window._currentBranch;
+  if(window._currentTenant > 0) apiUrl += '&tenant_id=' + window._currentTenant;
+  const r = await fetch(apiUrl, opts);
     if (r.status === 401) { location.href = 'admin.php'; return { ok: false, msg: 'Session expired' }; }
     const ct = r.headers.get('content-type') || '';
     if (!ct.includes('application/json')) {
