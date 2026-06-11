@@ -372,10 +372,6 @@ if (isset($_GET['api'])) { // GET+POST both handled
         if($bid > 0) $rows = array_values(array_filter($rows, fn($r) => (int)$r['branch_id'] === $bid));
         if($tid > 0) $rows = array_values(array_filter($rows, fn($r) => (int)$r['tenant_id'] === $tid));
         echo json_encode(['ok'=>true,'orders'=>$rows]); exit;
-    } if(false
-        ")->fetchAll();
-        echo json_encode(['ok'=>true,'orders'=>$rows]);
-        exit;
     }
 
     /* deleted orders log */
