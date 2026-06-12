@@ -4479,7 +4479,7 @@ async function saveOrder(ids) {
 const BASE_URL = window.location.origin + window.location.pathname.replace('admin.php','');
 
 async function loadTables() {
-  const r = await fetch('table_api.php?action=list');
+  const r = await fetch('table_api.php?action=list'+branchParams());
   const d = await r.json();
   if (!d.ok) { toast('Tables load failed','err'); return; }
   renderTablesGrid(d.tables);
