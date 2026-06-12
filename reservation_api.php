@@ -18,6 +18,10 @@
 declare(strict_types=1);
 require_once __DIR__ . '/db_connect.php';
 
+$_BID = (int)($_GET['branch_id'] ?? $_POST['branch_id'] ?? 0);
+$_TID = (int)($_GET['tenant_id'] ?? $_POST['tenant_id'] ?? $_SESSION['tenant_id'] ?? 1);
+$_BWHERE_R = $_BID > 0 ? " AND branch_id = $_BID" : ($_TID > 0 ? " AND tenant_id = $_TID" : "");
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
