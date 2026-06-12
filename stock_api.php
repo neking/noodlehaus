@@ -102,23 +102,9 @@ if ($action === 'overview' && $_SERVER['REQUEST_METHOD'] === 'GET') {
 
     $threshold = max(1, (int)($_GET['low_threshold'] ?? 10));
 
-    $items = $pdo->query("
-        SELECT id, name, category, emoji, price, stock_qty, is_active
-        FROM   menu_items
-        ORDER  BY category, name
-    ")->fetchAll(PDO::FETCH_ASSOC);
-
-    $lowStock  = [];
-    $outOfStock = [];
-    foreach ($items as $item) {
-        $qty = (int)$item['stock_qty'];
-        if ($qty <= 0) $outOfStock[] = $item;
-        elseif ($qty <= $threshold) $lowStock[] = $item;
-    }
-
-    $totalItems  = count($items);
-    $totalStock  = array_sum(array_column($items, 'stock_qty'));
-
+        // Use branch-aware getStock()
+    $items = getStock($pdo, $_REQ_BRANCH, $_REQ_TENANT);
+    $threshold = max(1, (int)($_GET['low_threshold'] ?? 10));
     ok([
         'items'       => $items,
         'low_stock'   => $lowStock,
