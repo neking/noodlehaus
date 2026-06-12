@@ -1514,6 +1514,12 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         </div>
         <div class="modal-body">
           <div class="form-group">
+            <label>Branch</label>
+            <select id="new-table-branch" style="width:100%;padding:.5rem;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+              <option value="">-- Select Branch --</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>Table Code (e.g. T01, VIP1)</label>
             <input type="text" id="new-table-code" placeholder="T09" style="text-transform:uppercase">
           </div>
@@ -4479,6 +4485,20 @@ async function saveOrder(ids) {
 const BASE_URL = window.location.origin + window.location.pathname.replace('admin.php','');
 
 async async function loadTables() {
+  // Populate branch selector in Add Table modal
+  const branchSel = document.getElementById('new-table-branch');
+  if (branchSel && branchSel.options.length <= 1) {
+    fetch('branch_api.php?action=list').then(r=>r.json()).then(d=>{
+      if(!d.ok) return;
+      d.branches.forEach(b=>{
+        const o = document.createElement('option');
+        o.value = b.id; o.textContent = b.name;
+        if (b.id == (window._currentBranch||0)) o.selected = true;
+        branchSel.appendChild(o);
+      });
+      if(window._currentBranch > 0) branchSel.value = window._currentBranch;
+    });
+  }
   const r = await fetch('table_api.php?action=list'+branchParams());
   const d = await r.json();
   if (!d.ok) { toast('Tables load failed','err'); return; }
@@ -4589,7 +4609,7 @@ async function saveNewTable() {
   if (!code) { toast('Table code လိုသည်','err'); return; }
   const r = await fetch('table_api.php?action=add_table', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({code, label, seats})
+    body: JSON.stringify({code, label, seats, branch_id: parseInt(document.getElementById('new-table-branch')?.value||'0'), tenant_id: window._currentTenant||1 })
   });
   const d = await r.json();
   if (d.ok) {
