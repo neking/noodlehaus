@@ -11,6 +11,10 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db_connect.php';
+
+$_BID = (int)($_GET['branch_id'] ?? $_POST['branch_id'] ?? 0);
+$_TID = (int)($_GET['tenant_id'] ?? $_POST['tenant_id'] ?? $_SESSION['tenant_id'] ?? 1);
+$_BWHERE = $_BID > 0 ? " AND t.branch_id = $_BID" : ($_TID > 0 ? " AND t.tenant_id = $_TID" : "");
 $pdo = getPDO();
 
 session_start();
