@@ -83,7 +83,7 @@ if ($action === 'overview' && $_SERVER['REQUEST_METHOD'] === 'GET') {
 
     $threshold = max(1, (int)($_GET['low_threshold'] ?? 10));
 
-    $items = getStockByBranch($pdo, $_BID, $_TID)
+    $items = getStockByBranch($pdo, $_BID, $_TID);
     $lowStock  = [];
     $outOfStock = [];
     foreach ($items as $item) {
