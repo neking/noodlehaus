@@ -811,7 +811,7 @@ nav{flex:1;padding:.8rem 0;}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
 .nav-item.active{background:rgba(255,255,255,.1);color:#fff;border-left-color:var(--accent2);}
 .nav-icon{font-size:1rem;width:20px;text-align:center;}
-.nav-section-header{padding:.75rem 1rem .2rem;font-size:.59rem;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.38);text-transform:uppercase;user-select:none;}
+.nav-section-header{padding:.75rem 1rem .25rem;font-size:.72rem;font-weight:700;letter-spacing:.08em;color:#f0a500;text-transform:uppercase;user-select:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:color .15s;}
 .nav-section-divider{height:1px;background:rgba(255,255,255,.09);margin:.4rem .8rem .3rem;}
 #branch-ops-selector{padding:.25rem .7rem .45rem;}
 #branch-ops-selector select{width:100%;padding:.32rem .55rem;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;font-size:.76rem;cursor:pointer;outline:none;}
