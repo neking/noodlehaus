@@ -90,7 +90,7 @@ if ($action === 'status') {
 /* ── GET: list all tables + current orders (admin only) ── */
 if ($action === 'list') {
     if (empty($_SESSION['admin'])) jErr('Not logged in', 401);
-    $tables = db()->query("SELECT * FROM restaurant_tables WHERE is_active=1 ORDER BY table_code")->fetchAll();
+    $tables = db()->query("SELECT * FROM restaurant_tables WHERE is_active=1" . ($_BID > 0 ? " AND branch_id=$_BID" : ($_TID > 0 ? " AND tenant_id=$_TID" : "")) . " ORDER BY table_code")->fetchAll();
     $result = [];
     foreach ($tables as $t) {
         $ord = db()->prepare("
