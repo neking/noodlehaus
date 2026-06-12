@@ -105,6 +105,11 @@ if ($action === 'overview' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         // Use branch-aware getStock()
     $items = getStock($pdo, $_REQ_BRANCH, $_REQ_TENANT);
     $threshold = max(1, (int)($_GET['low_threshold'] ?? 10));
+    // Compute stats from items array
+    $lowStock   = array_values(array_filter($items, fn($i) => (int)$i['stock_qty'] <= $threshold && (int)$i['stock_qty'] > 0));
+    $outOfStock = array_values(array_filter($items, fn($i) => (int)$i['stock_qty'] <= 0));
+    $totalItems = count($items);
+    $totalQty   = array_sum(array_column($items, 'stock_qty'));
     ok([
         'items'       => $items,
         'low_stock'   => $lowStock,
