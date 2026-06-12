@@ -48,6 +48,48 @@ function branchWhere(string $alias='o'): string {
 }
 // ─────────────────────────────────────────────────────────────────────
 
+// ── Per-branch stock support ─────────────────────────────────────────
+function getStock(PDO $pdo, int $branchId, int $tenantId): array {
+    if ($branchId > 0) {
+        // Per-branch stock from branch_stock table
+        $stmt = $pdo->prepare("
+            SELECT m.id, m.name, m.emoji, m.category, m.unit,
+                   COALESCE(bs.stock_qty, 0) as stock_qty,
+                   m.is_active, m.tenant_id, :bid as branch_id
+            FROM menu_items m
+            LEFT JOIN branch_stock bs ON bs.menu_item_id = m.id AND bs.branch_id = :bid2
+            WHERE m.tenant_id = :tid AND m.is_active = 1
+            ORDER BY m.category, m.name
+        ");
+        $stmt->execute([':bid' => $branchId, ':bid2' => $branchId, ':tid' => $tenantId]);
+    } else {
+        // All branches - show menu_items with aggregate stock
+        $stmt = $pdo->prepare("
+            SELECT m.id, m.name, m.emoji, m.category, m.unit,
+                   m.stock_qty, m.is_active, m.tenant_id, 0 as branch_id
+            FROM menu_items m
+            WHERE m.tenant_id = :tid AND m.is_active = 1
+            ORDER BY m.category, m.name
+        ");
+        $stmt->execute([':tid' => $tenantId]);
+    }
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function adjustBranchStock(PDO $pdo, int $branchId, int $tenantId, int $itemId, int $delta): void {
+    if ($branchId > 0) {
+        $pdo->prepare("
+            INSERT INTO branch_stock (branch_id, tenant_id, menu_item_id, stock_qty)
+            VALUES (:bid, :tid, :mid, GREATEST(0, :qty))
+            ON DUPLICATE KEY UPDATE stock_qty = GREATEST(0, stock_qty + :delta)
+        ")->execute([':bid'=>$branchId,':tid'=>$tenantId,':mid'=>$itemId,':qty'=>max(0,$delta),':delta'=>$delta]);
+    } else {
+        $pdo->prepare("UPDATE menu_items SET stock_qty = GREATEST(0, stock_qty + :d) WHERE id = :id")
+            ->execute([':d'=>$delta,':id'=>$itemId]);
+    }
+}
+// ─────────────────────────────────────────────────────────────────────
+
     if (empty($_SESSION['admin'])) fail('Unauthorized', 401);
 }
 
