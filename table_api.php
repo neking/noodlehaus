@@ -175,7 +175,7 @@ if ($action === 'add_table') {
     $seats = (int)($b['seats'] ?? 4);
     if (!$code) jErr('No code');
     db()->prepare("INSERT INTO restaurant_tables (table_code,label,seats,branch_id,tenant_id) VALUES (:c,:l,:s,:b,:t) ON DUPLICATE KEY UPDATE label=:l2,seats=:s2,is_active=1")
-        ->execute([':c'=>$code,':l'=>$label,':s'=>$seats,':b'=>$_BID>0?$_BID:($_POST['branch_id']??1),':t'=>$_TID>0?$_TID:($_POST['tenant_id']??1),':l2'=>$label,':s2'=>$seats]);
+        ->execute([':c'=>$code,':l'=>$label,':s'=>$seats,':b'=>(int)($b['branch_id']??$_BID??1),':t'=>(int)($b['tenant_id']??$_TID??1),':l2'=>$label,':s2'=>$seats]);
     jOk(['msg'=>'Table saved']);
 }
 
