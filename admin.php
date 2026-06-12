@@ -4515,7 +4515,9 @@ function renderTablesGrid(tables) {
     const bg = STATUS_COLOR[status] || '#f0f0f0';
     return `<div style="background:${bg};border-radius:10px;padding:1rem;border:1px solid rgba(0,0,0,.08)">
       <div style="font-weight:700;font-size:1rem;margin-bottom:.3rem">${t.table_code}
-        <span style="font-size:.75rem;font-weight:400;color:#666"> ${t.label}</span></div>
+        <span style="font-size:.75rem;font-weight:400;color:#666"> ${t.label}</span>
+        ${t.qr_img ? `<a href="${t.qr_img}" target="_blank" title="QR Code" style="float:right;font-size:.9rem;text-decoration:none">📱</a>` : ''}
+      </div>
       <div style="font-size:.82rem;margin-bottom:.5rem">${STATUS_LABEL[status]||status}</div>
       ${hasOrder ? `
         <div style="font-size:.78rem;color:#555;margin-bottom:.6rem">
