@@ -35,6 +35,8 @@ function fail(string $msg, int $code = 400): never {
 }
 function requireAdmin(): void {
     if (session_status() === PHP_SESSION_NONE) session_start();
+    if (empty($_SESSION['admin'])) { http_response_code(401); echo json_encode(['ok'=>false,'msg'=>'Unauthorized']); exit; }
+}
 
 // ── Branch/Tenant context from request ──────────────────────────────
 $_REQ_BRANCH = (int)($_GET['branch_id'] ?? $_POST['branch_id'] ?? 0);
