@@ -73,7 +73,9 @@ if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $date  = trim($d['reservation_date'] ?? '');
     $time  = trim($d['reservation_time'] ?? '');
     $dur   = max(30, (int)($d['duration_min'] ?? 90));
-    $notes = trim($d['notes']          ?? '') ?: null;
+    $notes  = trim($d['notes']          ?? '') ?: null;
+    $bid    = (int)($d['branch_id'] ?? $_BID ?? 1);
+    $tid    = (int)($d['tenant_id'] ?? $_TID ?? 1);
 
     if (!$name || !$phone) fail('Name and phone required');
     if (!$date || !$time)  fail('Date and time required');
@@ -101,9 +103,9 @@ if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $pdo->prepare("
         INSERT INTO reservations
             (customer_name, customer_phone, party_size, table_code,
-             reservation_date, reservation_time, duration_min, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ")->execute([$name, $phone, $size, $table, $date, $time, $dur, $notes]);
+             reservation_date, reservation_time, duration_min, notes, branch_id, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ")->execute([$name, $phone, $size, $table, $date, $time, $dur, $notes, $bid, $tid]);
 
     $id = (int)$pdo->lastInsertId();
     ok(['reservation_id' => $id]);
