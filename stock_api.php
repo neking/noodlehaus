@@ -29,7 +29,7 @@ $_TID = (int)($_GET['tenant_id'] ?? $_SESSION['tenant_id'] ?? 1);
 
 function getStockByBranch(PDO $pdo, int $bid, int $tid): array {
     if ($bid > 0) {
-        $s = $pdo->prepare("SELECT m.id,m.name,m.emoji,m.category,m.unit,
+        $s = $pdo->prepare("SELECT m.id,m.name,m.emoji,m.category,
             COALESCE(bs.stock_qty,0) as stock_qty, m.is_active, $bid as branch_id
             FROM menu_items m
             LEFT JOIN branch_stock bs ON bs.menu_item_id=m.id AND bs.branch_id=:bid
