@@ -171,23 +171,42 @@ if ($action === 'adjust' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $pdo->beginTransaction();
     try {
-        // Get current stock
+        // Get current stock (branch-aware)
         $cur = $pdo->prepare("SELECT name, stock_qty FROM menu_items WHERE id = ? FOR UPDATE");
         $cur->execute([$itemId]);
         $item = $cur->fetch(PDO::FETCH_ASSOC);
         if (!$item) { $pdo->rollBack(); fail('Item not found'); }
 
-        $newQty = max(0, (int)$item['stock_qty'] + $changeQty);
+        $bid = (int)($d['branch_id'] ?? $_BID ?? 0);
+        $tid = (int)($d['tenant_id'] ?? $_TID ?? 1);
 
-        // Update stock
-        $pdo->prepare("UPDATE menu_items SET stock_qty = ? WHERE id = ?")
-            ->execute([$newQty, $itemId]);
+        if ($bid > 0) {
+            // Per-branch stock update
+            $curBranch = $pdo->prepare(
+                "SELECT stock_qty FROM branch_stock WHERE branch_id=? AND menu_item_id=?"
+            );
+            $curBranch->execute([$bid, $itemId]);
+            $branchRow = $curBranch->fetch(PDO::FETCH_ASSOC);
+            $oldQty = $branchRow ? (int)$branchRow['stock_qty'] : 0;
+            $newQty = max(0, $oldQty + $changeQty);
 
-        // Log
+            $pdo->prepare(
+                "INSERT INTO branch_stock (branch_id,tenant_id,menu_item_id,stock_qty)
+                 VALUES (?,?,?,?)
+                 ON DUPLICATE KEY UPDATE stock_qty=VALUES(stock_qty)"
+            )->execute([$bid, $tid, $itemId, $newQty]);
+        } else {
+            // Tenant-level stock update
+            $newQty = max(0, (int)$item['stock_qty'] + $changeQty);
+            $pdo->prepare("UPDATE menu_items SET stock_qty=? WHERE id=?")
+                ->execute([$newQty, $itemId]);
+        }
+
+        // Log with branch context
         $pdo->prepare("
-            INSERT INTO stock_log (menu_item_id, item_name, change_qty, new_qty, reason, note, staff_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ")->execute([$itemId, $item['name'], $changeQty, $newQty, $reason, $note ?: null, $staffName]);
+            INSERT INTO stock_log (menu_item_id, item_name, change_qty, new_qty, reason, note, staff_name, branch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ")->execute([$itemId, $item['name'], $changeQty, $newQty, $reason, $note ?: null, $staffName, $bid]);
 
         $pdo->commit();
 
