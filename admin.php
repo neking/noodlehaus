@@ -4961,10 +4961,10 @@ async function saveSettings() {
       body: JSON.stringify(payload)
     });
     const d = await r.json();
-    if (d.ok) { toast('Settings saved ✓','ok'); updateAnnPreview(); }
-    else       { toast(d.msg || 'Save failed','err'); }
+    if (d.ok) { toast('Settings saved ✓','ok'+branchParams()); updateAnnPreview(); }
+    else       { toast(d.msg || 'Save failed','err'+branchParams()); }
   } catch(e) {
-    toast('Save error: '+e.message,'err');
+    toast('Save error: '+e.message,'err'+branchParams());
   }
 }
 
@@ -4975,19 +4975,19 @@ async function saveSettings() {
 
 
 function showToast(msg, isErr=false) {
-  if (typeof toast === 'function') { toast(msg, isErr ? 'err' : 'ok'); }
+  if (typeof toast === 'function'+branchParams()) { toast(msg, isErr ? 'err' : 'ok'+branchParams()); }
 }
 
 function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||''+branchParams()).replace(/&/g,'&amp;'+branchParams()).replace(/</g,'&lt;'+branchParams()).replace(/>/g,'&gt;'+branchParams()).replace(/"/g,'&quot;'+branchParams());
 }
 
-showPage('dashboard');
+showPage('dashboard'+branchParams());
 <?php endif; ?>
 </script>
 <script>
 function twRow(n,f){
-  var d=document.createElement('div');
+  var d=document.createElement('div'+branchParams());
   d.style.cssText='display:flex;gap:6px;margin-bottom:4px';
   d.innerHTML='<input class="tw-n" placeholder="မြို့နယ်" value="'+n+'" style="flex:2;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
     +'<input type="number" class="tw-f" placeholder="Ks" value="'+f+'" style="flex:1;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
@@ -4995,45 +4995,45 @@ function twRow(n,f){
   return d;
 }
 function prRow(c,t,v,l){
-  var d=document.createElement('div');
+  var d=document.createElement('div'+branchParams());
   d.style.cssText='display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap';
   d.innerHTML='<input class="pr-c" placeholder="CODE" value="'+c+'" style="width:90px;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem;text-transform:uppercase">'
     +'<select class="pr-t" style="padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
-    +'<option value="fixed"'+(t==='fixed'?' selected':'')+'>Fixed Ks</option>'
-    +'<option value="percent"'+(t==='percent'?' selected':'')+'>Percent %</option>'
-    +'<option value="free_ship"'+(t==='free_ship'?' selected':'')+'>Free ship</option></select>'
+    +'<option value="fixed"'+(t==='fixed'?' selected':''+branchParams())+'>Fixed Ks</option>'
+    +'<option value="percent"'+(t==='percent'?' selected':''+branchParams())+'>Percent %</option>'
+    +'<option value="free_ship"'+(t==='free_ship'?' selected':''+branchParams())+'>Free ship</option></select>'
     +'<input type="number" class="pr-v" placeholder="value" value="'+v+'" style="width:80px;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
     +'<input class="pr-l" placeholder="label" value="'+l+'" style="flex:1;min-width:100px;padding:.3rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.82rem">'
     +'<button type="button" style="padding:.3rem .6rem;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer" onclick="this.parentElement.remove()">✕</button>';
   return d;
 }
-function addTownshipRow(){document.getElementById('township-fee-editor').appendChild(twRow('',''));}
-function addPromoRow(){document.getElementById('promo-code-editor').appendChild(prRow('','fixed','',''));}
+function addTownshipRow(){document.getElementById('township-fee-editor'+branchParams()).appendChild(twRow('',''+branchParams()));}
+function addPromoRow(){document.getElementById('promo-code-editor'+branchParams()).appendChild(prRow('','fixed','',''+branchParams()));}
 function initTownshipEditors(s){
-  var tw={};try{tw=JSON.parse(s.township_fees||'{}');}catch(e){}
-  var wrap=document.getElementById('township-fee-editor');
+  var tw={};try{tw=JSON.parse(s.township_fees||'{}'+branchParams());}catch(e){}
+  var wrap=document.getElementById('township-fee-editor'+branchParams());
   if(wrap){wrap.innerHTML='';Object.entries(tw).forEach(function(e){wrap.appendChild(twRow(e[0],e[1]));});}
-  var pr=[];try{pr=JSON.parse(s.promo_codes||'[]');}catch(e){}
-  var pw=document.getElementById('promo-code-editor');
-  if(pw){pw.innerHTML='';pr.forEach(function(p){pw.appendChild(prRow(p.code||'',p.type||'fixed',p.value||'',p.label||''));});}
+  var pr=[];try{pr=JSON.parse(s.promo_codes||'[]'+branchParams());}catch(e){}
+  var pw=document.getElementById('promo-code-editor'+branchParams());
+  if(pw){pw.innerHTML='';pr.forEach(function(p){pw.appendChild(prRow(p.code||'',p.type||'fixed',p.value||'',p.label||''+branchParams()));});}
 }
 function collectTownshipPromo(){
   var tw={};
-  document.querySelectorAll('#township-fee-editor>div').forEach(function(r){
-    var n=r.querySelector('.tw-n').value.trim();
-    var f=parseInt(r.querySelector('.tw-f').value)||0;
+  document.querySelectorAll('#township-fee-editor>div'+branchParams()).forEach(function(r){
+    var n=r.querySelector('.tw-n'+branchParams()).value.trim();
+    var f=parseInt(r.querySelector('.tw-f'+branchParams()).value)||0;
     if(n)tw[n]=f;
   });
-  document.getElementById('st-township_fees').value=JSON.stringify(tw);
+  document.getElementById('st-township_fees'+branchParams()).value=JSON.stringify(tw);
   var pr=[];
-  document.querySelectorAll('#promo-code-editor>div').forEach(function(r){
-    var c=r.querySelector('.pr-c').value.trim().toUpperCase();
-    var t=r.querySelector('.pr-t').value;
-    var v=parseInt(r.querySelector('.pr-v').value)||0;
-    var l=r.querySelector('.pr-l').value.trim();
+  document.querySelectorAll('#promo-code-editor>div'+branchParams()).forEach(function(r){
+    var c=r.querySelector('.pr-c'+branchParams()).value.trim().toUpperCase();
+    var t=r.querySelector('.pr-t'+branchParams()).value;
+    var v=parseInt(r.querySelector('.pr-v'+branchParams()).value)||0;
+    var l=r.querySelector('.pr-l'+branchParams()).value.trim();
     if(c)pr.push({code:c,type:t,value:v,label:l});
   });
-  document.getElementById('st-promo_codes').value=JSON.stringify(pr);
+  document.getElementById('st-promo_codes'+branchParams()).value=JSON.stringify(pr);
 }
 </script>
 <script src="admin_modules.js?v=1781166732"></script>
@@ -5095,14 +5095,14 @@ const ALL_PAGES = [
   {k:'settings',l:'⚙️ Settings'}
 ];
 async function loadStaff(){
-  const el=document.getElementById('staff-list');
+  const el=document.getElementById('staff-list'+branchParams());
   el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted)">Loading...</div>';
   try{
-    const d=await(await fetch('staff_api.php?action=list')).json();
+    const d=await(await fetch('staff_api.php?action=list'+branchParams())).json();
     if(!d.ok)throw new Error(d.msg);
     if(!d.staff.length){el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text-muted)">No staff yet</div>';return;}
     el.innerHTML=d.staff.map(s=>{
-      const perms=(s.permissions||[]).map(p=>{const pg=ALL_PAGES.find(x=>x.k===p);return pg?`<span style="font-size:.72rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.15rem .5rem">${pg.l}</span>`:''}).join(' ');
+      const perms=(s.permissions||[]).map(p=>{const pg=ALL_PAGES.find(x=>x.k===p);return pg?`<span style="font-size:.72rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.15rem .5rem">${pg.l}</span>`:''}).join(' '+branchParams());
       const roleBadge=s.role==='manager'?'<span style="background:#dbeafe;color:#1e40af;padding:.2rem .6rem;border-radius:10px;font-size:.75rem;font-weight:600">👔 Manager</span>':'<span style="background:#f3f4f6;color:#555;padding:.2rem .6rem;border-radius:10px;font-size:.75rem;font-weight:600">🧑‍🍳 Waiter</span>';
       const activeBadge=s.is_active?'<span style="color:#27ae60;font-size:.75rem">● Active</span>':'<span style="color:#e74c3c;font-size:.75rem">● Inactive</span>';
       const sData=encodeURIComponent(JSON.stringify(s));
