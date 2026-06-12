@@ -126,7 +126,14 @@ if ($action === 'list') {
             'subtotal'     => $active ? $active['subtotal'] : 0,
             'items_summary'=> $active ? $active['items_summary'] : '',
         ];
-        $result[] = $row;
+        // Add QR + branch info to result
+    $row['qr_url']   = $t['qr_url']  ?? '';
+    $row['qr_img']   = $t['qr_img']  ?? '';
+    $row['branch_id']= $t['branch_id'] ?? 0;
+    $row['tenant_id']= $t['tenant_id'] ?? 1;
+    $row['seats']    = $t['seats']    ?? 4;
+    $row['label']    = $t['label']    ?? $t['table_code'];
+    $result[] = $row;
     }
     jOk(['tables'=>$result]);
 }
