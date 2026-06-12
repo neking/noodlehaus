@@ -106,6 +106,8 @@ if (isset($_GET['api'])) { // GET+POST both handled
             exit;
         }
         if ($inputUser === ADMIN_USER && password_verify($inputPass, $hash)) {
+            // Reset rate limit on successful login
+            $_SESSION['login_attempts'] = 0;
             $_SESSION['admin'] = true;
             $_SESSION['login_time'] = time();
             // Reset fail counter on success
