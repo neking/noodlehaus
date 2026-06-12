@@ -1158,6 +1158,21 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <div class="nav-item" onclick="showPage('menu')" id="nav-menu">
           <span class="nav-icon">🍜</span> Menu Items
         </div>
+        <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
+          <span class="nav-icon">👥</span> Staff
+        </div>
+        <div class="nav-item" onclick="showPage('crm')" id="nav-crm">
+          <span class="nav-icon">🤝</span> CRM
+        </div>
+        <div class="nav-item" onclick="showPage('stocklog')" id="nav-stocklog">
+          <span class="nav-icon">📋</span> Stock Log
+        </div>
+        <div class="nav-item" onclick="showPage('promos')" id="nav-promos">
+          <span class="nav-icon">🏷️</span> Promotions
+        </div>
+        <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
+          <span class="nav-icon">🏢</span> Branches
+        </div>
       </div>
       <!-- ── BRANCH OPS ── -->
       <div class="nav-section-divider"></div>
@@ -1185,20 +1200,14 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <div class="nav-item" onclick="showPage('stock')" id="nav-stock">
           <span class="nav-icon">📦</span> Stock
         </div>
-        <div class="nav-item" onclick="showPage('stocklog')" id="nav-stocklog">
-          <span class="nav-icon">📋</span> Stock Log
-        </div>
-        <div class="nav-item" onclick="showPage('crm')" id="nav-crm">
-          <span class="nav-icon">👥</span> CRM
-        </div>
         <div class="nav-item" onclick="showPage('shift')" id="nav-shift">
           <span class="nav-icon">🕐</span> Shifts
         </div>
         <div class="nav-item" onclick="showPage('delivery')" id="nav-delivery">
           <span class="nav-icon">🛵</span> Delivery
         </div>
-        <div class="nav-item" onclick="showPage('branches')" id="nav-branches">
-          <span class="nav-icon">🏢</span> Branches
+        <div class="nav-item" onclick="showPage('expenses')" id="nav-expenses">
+          <span class="nav-icon">💰</span> Expenses
         </div>
       </div>
       <!-- ── ADMIN ── -->
@@ -1210,17 +1219,8 @@ tr.drop-below{box-shadow:0 2px 0 var(--accent);}
         <div class="nav-item" onclick="showPage('saas')" id="nav-saas">
           <span class="nav-icon">🌐</span> SaaS
         </div>
-        <div class="nav-item" onclick="showPage('promos')" id="nav-promos">
-          <span class="nav-icon">🏷️</span> Promotions
-        </div>
-        <div class="nav-item" onclick="showPage('expenses')" id="nav-expenses">
-          <span class="nav-icon">💰</span> Expenses
-        </div>
         <div class="nav-item" onclick="showPage('schedule')" id="nav-schedule">
           <span class="nav-icon">📅</span> Scheduling
-        </div>
-        <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
-          <span class="nav-icon">👥</span> Staff
         </div>
         <div class="nav-item" onclick="showPage('storefront')" id="nav-storefront">
           <span class="nav-icon">🎨</span> Storefront
