@@ -23,6 +23,28 @@ header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 $pdo    = getPDO();
+// ── Branch/Tenant context ─────────────────────────────────────────
+$_BID = (int)($_GET['branch_id'] ?? 0);
+$_TID = (int)($_GET['tenant_id'] ?? $_SESSION['tenant_id'] ?? 1);
+
+function getStockByBranch(PDO $pdo, int $bid, int $tid): array {
+    if ($bid > 0) {
+        $s = $pdo->prepare("SELECT m.id,m.name,m.emoji,m.category,m.unit,
+            COALESCE(bs.stock_qty,0) as stock_qty, m.is_active, $bid as branch_id
+            FROM menu_items m
+            LEFT JOIN branch_stock bs ON bs.menu_item_id=m.id AND bs.branch_id=:bid
+            WHERE m.tenant_id=:tid AND m.is_active=1
+            ORDER BY m.category,m.name");
+        $s->execute([':bid'=>$bid,':tid'=>$tid]);
+    } else {
+        $s = $pdo->prepare("SELECT id,name,emoji,category,unit,stock_qty,is_active,0 as branch_id
+            FROM menu_items WHERE tenant_id=:tid AND is_active=1 ORDER BY category,name");
+        $s->execute([':tid'=>$tid]);
+    }
+    return $s->fetchAll(PDO::FETCH_ASSOC);
+}
+// ─────────────────────────────────────────────────────────────────────
+
 $action = trim($_GET['action'] ?? '');
 
 function ok(mixed $data = []): never {
@@ -36,8 +58,6 @@ function fail(string $msg, int $code = 400): never {
 }
 function requireAdmin(): void {
     if (session_status() === PHP_SESSION_NONE) session_start();
-    if (empty($_SESSION['admin'])) { http_response_code(401); echo json_encode(['ok'=>false,'msg'=>'Unauthorized']); exit; }
-}
 
 // ── Branch/Tenant context from request ──────────────────────────────
 $_REQ_BRANCH = (int)($_GET['branch_id'] ?? $_POST['branch_id'] ?? 0);
@@ -48,48 +68,6 @@ function branchWhere(string $alias='o'): string {
     if($_REQ_BRANCH > 0) $w[] = "$alias.branch_id = $_REQ_BRANCH";
     if($_REQ_TENANT > 0) $w[] = "$alias.tenant_id = $_REQ_TENANT";
     return $w ? ' AND '.implode(' AND ',$w) : '';
-}
-// ─────────────────────────────────────────────────────────────────────
-
-// ── Per-branch stock support ─────────────────────────────────────────
-function getStock(PDO $pdo, int $branchId, int $tenantId): array {
-    if ($branchId > 0) {
-        // Per-branch stock from branch_stock table
-        $stmt = $pdo->prepare("
-            SELECT m.id, m.name, m.emoji, m.category, m.unit,
-                   COALESCE(bs.stock_qty, 0) as stock_qty,
-                   m.is_active, m.tenant_id, :bid as branch_id
-            FROM menu_items m
-            LEFT JOIN branch_stock bs ON bs.menu_item_id = m.id AND bs.branch_id = :bid2
-            WHERE m.tenant_id = :tid AND m.is_active = 1
-            ORDER BY m.category, m.name
-        ");
-        $stmt->execute([':bid' => $branchId, ':bid2' => $branchId, ':tid' => $tenantId]);
-    } else {
-        // All branches - show menu_items with aggregate stock
-        $stmt = $pdo->prepare("
-            SELECT m.id, m.name, m.emoji, m.category, m.unit,
-                   m.stock_qty, m.is_active, m.tenant_id, 0 as branch_id
-            FROM menu_items m
-            WHERE m.tenant_id = :tid AND m.is_active = 1
-            ORDER BY m.category, m.name
-        ");
-        $stmt->execute([':tid' => $tenantId]);
-    }
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function adjustBranchStock(PDO $pdo, int $branchId, int $tenantId, int $itemId, int $delta): void {
-    if ($branchId > 0) {
-        $pdo->prepare("
-            INSERT INTO branch_stock (branch_id, tenant_id, menu_item_id, stock_qty)
-            VALUES (:bid, :tid, :mid, GREATEST(0, :qty))
-            ON DUPLICATE KEY UPDATE stock_qty = GREATEST(0, stock_qty + :delta)
-        ")->execute([':bid'=>$branchId,':tid'=>$tenantId,':mid'=>$itemId,':qty'=>max(0,$delta),':delta'=>$delta]);
-    } else {
-        $pdo->prepare("UPDATE menu_items SET stock_qty = GREATEST(0, stock_qty + :d) WHERE id = :id")
-            ->execute([':d'=>$delta,':id'=>$itemId]);
-    }
 }
 // ─────────────────────────────────────────────────────────────────────
 
@@ -105,14 +83,18 @@ if ($action === 'overview' && $_SERVER['REQUEST_METHOD'] === 'GET') {
 
     $threshold = max(1, (int)($_GET['low_threshold'] ?? 10));
 
-        // Use branch-aware getStock()
-    $items = getStock($pdo, $_REQ_BRANCH, $_REQ_TENANT);
-    $threshold = max(1, (int)($_GET['low_threshold'] ?? 10));
-    // Compute stats from items array
-    $lowStock   = array_values(array_filter($items, fn($i) => (int)$i['stock_qty'] <= $threshold && (int)$i['stock_qty'] > 0));
-    $outOfStock = array_values(array_filter($items, fn($i) => (int)$i['stock_qty'] <= 0));
-    $totalItems = count($items);
-    $totalQty   = array_sum(array_column($items, 'stock_qty'));
+    $items = getStockByBranch($pdo, $_BID, $_TID)
+    $lowStock  = [];
+    $outOfStock = [];
+    foreach ($items as $item) {
+        $qty = (int)$item['stock_qty'];
+        if ($qty <= 0) $outOfStock[] = $item;
+        elseif ($qty <= $threshold) $lowStock[] = $item;
+    }
+
+    $totalItems  = count($items);
+    $totalStock  = array_sum(array_column($items, 'stock_qty'));
+
     ok([
         'items'       => $items,
         'low_stock'   => $lowStock,
