@@ -30,8 +30,8 @@ try {
 
 // Add columns safely
 $cols = [
-    ['tables','branch_id','INT UNSIGNED NOT NULL DEFAULT 1'],
-    ['tables','tenant_id','INT UNSIGNED NOT NULL DEFAULT 1'],
+    ['restaurant_tables','branch_id','INT UNSIGNED NOT NULL DEFAULT 1'],
+    ['restaurant_tables','tenant_id','INT UNSIGNED NOT NULL DEFAULT 1'],
     ['reservations','branch_id','INT UNSIGNED NOT NULL DEFAULT 1'],
     ['reservations','tenant_id','INT UNSIGNED NOT NULL DEFAULT 1'],
     ['stock_logs','branch_id','INT UNSIGNED DEFAULT 0'],
