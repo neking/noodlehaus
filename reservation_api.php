@@ -124,7 +124,7 @@ if ($action === 'list' && $_SERVER['REQUEST_METHOD'] === 'GET') {
 
     $where  = ['1=1'];
     $params = [];
-    if ($_BID > 0) { \$where[] = 'branch_id = ?'; \$params[] = \$_BID; }
+    if ($_BID > 0) { $where[] = 'branch_id = ?'; $params[] = $_BID; }
 
     if ($date) { $where[] = 'r.reservation_date = ?'; $params[] = $date; }
     if ($status && in_array($status, ['pending','confirmed','seated','completed','cancelled','no_show'])) {
