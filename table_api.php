@@ -93,6 +93,11 @@ if ($action === 'list') {
     $tables = db()->query("SELECT * FROM restaurant_tables WHERE is_active=1" . ($_BID > 0 ? " AND branch_id=$_BID" : ($_TID > 0 ? " AND tenant_id=$_TID" : "")) . " ORDER BY table_code")->fetchAll();
     $result = [];
     foreach ($tables as $t) {
+        // Generate QR URL for this table
+        $baseUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $qrUrl = $baseUrl . '/order.php?table=' . urlencode($t['table_code']) . '&branch=' . $t['branch_id'];
+        $t['qr_url'] = $qrUrl;
+        $t['qr_img'] = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode($qrUrl);
         $ord = db()->prepare("
             SELECT o.id, o.table_status, o.created_at, o.total_amount,
                    COUNT(oi.id) AS line_count,
