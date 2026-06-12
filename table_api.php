@@ -90,7 +90,7 @@ if ($action === 'status') {
 /* ── GET: list all tables + current orders (admin only) ── */
 if ($action === 'list') {
     if (empty($_SESSION['admin'])) jErr('Not logged in', 401);
-    $tables = db()->query("SELECT * FROM restaurant_tables WHERE is_active=1" . ($_BID > 0 ? " AND branch_id=$_BID" : ($_TID > 0 ? " AND tenant_id=$_TID" : "")) . " ORDER BY table_code")->fetchAll();
+    $tables = db()->query("SELECT * FROM restaurant_tables WHERE is_active=1" . ($_BID>0 ? " AND branch_id=$_BID" : (\$_TID>0 ? " AND tenant_id=$_TID" : "")) . "" . ($_BID > 0 ? " AND branch_id=$_BID" : ($_TID > 0 ? " AND tenant_id=$_TID" : "")) . " ORDER BY table_code")->fetchAll();
     $result = [];
     foreach ($tables as $t) {
         $ord = db()->prepare("
@@ -174,8 +174,8 @@ if ($action === 'add_table') {
     $label = trim($b['label'] ?? '');
     $seats = (int)($b['seats'] ?? 4);
     if (!$code) jErr('No code');
-    db()->prepare("INSERT INTO restaurant_tables (table_code,label,seats) VALUES (:c,:l,:s) ON DUPLICATE KEY UPDATE label=:l2,seats=:s2,is_active=1")
-        ->execute([':c'=>$code,':l'=>$label,':s'=>$seats,':l2'=>$label,':s2'=>$seats]);
+    db()->prepare("INSERT INTO restaurant_tables (table_code,label,seats,branch_id,tenant_id) VALUES (:c,:l,:s,:b,:t) ON DUPLICATE KEY UPDATE label=:l2,seats=:s2,is_active=1")
+        ->execute([':c'=>$code,':l'=>$label,':s'=>$seats,':b'=>$_BID>0?$_BID:($_POST['branch_id']??1),':t'=>$_TID>0?$_TID:($_POST['tenant_id']??1),':l2'=>$label,':s2'=>$seats]);
     jOk(['msg'=>'Table saved']);
 }
 
