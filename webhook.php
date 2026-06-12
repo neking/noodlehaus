@@ -1,5 +1,5 @@
 <?php
-// NoodleHaus GitHub Webhook Auto-Deploy
+// NoodleHaus GitHub Webhook Auto-Deploy v2 (tested 02:31)
 $secret = 'nh_webhook_2026';
 $sig    = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
 $body   = file_get_contents('php://input');
